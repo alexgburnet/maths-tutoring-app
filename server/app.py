@@ -268,7 +268,7 @@ def delete_booking(current_user, booking_id):
     booking = Booking.query.get_or_404(booking_id)
 
     print("Zoom meeting ID:", booking.zoom_meeting_id)
-    
+
     # Ensure only the owner can delete
     if booking.user_id != current_user.id and not current_user.is_admin:
         return jsonify({"error": "Unauthorized"}), 403
@@ -320,6 +320,13 @@ def assign_slot(current_user):
 
     if slot.booked:
         return jsonify({"error": "Slot already booked"}), 400
+    
+    student_name = user.email.split("@")[0] if not hasattr(user, "name") else user.name
+
+    try:
+        zoom_meeting = create_zoom_meeting(student_name, slot.start_time.isoformat())
+    except Exception as e:
+        return jsonify({"error": f"Failed to create Zoom meeting: {str(e)}"}), 500
 
     booking = Booking(
         student_name=user.email.split("@")[0],  # or you can use user.name if stored
@@ -327,6 +334,8 @@ def assign_slot(current_user):
         scheduled_time=slot.start_time,
         user_id=user.id,
         slot_id=slot.id,
+        zoom_link=zoom_meeting["join_url"],
+        zoom_meeting_id=zoom_meeting["id"]
     )
 
     slot.booked = True

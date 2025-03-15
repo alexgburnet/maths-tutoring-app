@@ -4,6 +4,7 @@ import Calendar from "./Calendar";
 import BookingModal from "./BookingModal";
 
 export default function Dashboard({ onLogout }) {
+  const [cancelLoading, setCancelLoading] = useState(false);
   const [bookings, setBookings] = useState([]);
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [showModal, setShowModal] = useState(false);
@@ -122,11 +123,14 @@ export default function Dashboard({ onLogout }) {
 
             {new Date(selectedBooking.scheduled_time).getTime() > Date.now() && (
               <button
+              disabled={cancelLoading}
                 onClick={async () => {
+                  setCancelLoading(true);
                   await fetch(`/api/bookings/${selectedBooking.id}`, {
                     method: "DELETE",
                     headers: { Authorization: token },
                   });
+                  setCancelLoading(false);
                   fetchBookings();
                   setSelectedBooking(null);
                 }}
@@ -139,7 +143,7 @@ export default function Dashboard({ onLogout }) {
                   cursor: "pointer",
                 }}
               >
-                Cancel Booking
+                {cancelLoading ? <span className="spinner" /> : "Cancel Booking"}
               </button>
             )}
           </div>
