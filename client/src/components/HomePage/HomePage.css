@@ -64,8 +64,10 @@
   /* RESPONSIVE TYPOGRAPHY & LAYOUT */
   @media (max-width: 768px) {
     .hero {
-      padding: 3rem 1rem 2rem;
-    }
+        margin: 1rem; /* match section */
+        padding: 1.5rem; /* optionally match section too */
+      }
+    
   
     .hero h1 {
       font-size: 2rem;

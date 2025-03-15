@@ -37,7 +37,7 @@ export default function Navbar({ loggedIn, setLoggedIn }) {
         {!onDashboard && (
           <>
             <a href="#tutoring">Tutoring</a>
-            <a href="#about">About Me</a>
+            <a href="#about">Me</a>
             <a href="#contact">Contact</a>
           </>
         )}
