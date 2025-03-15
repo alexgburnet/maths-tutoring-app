@@ -1,47 +1,37 @@
-import os
-import shutil
 from app import app, db, User
-from flask_migrate import init, migrate, upgrade
+from flask_migrate import migrate, upgrade
 from sqlalchemy.exc import OperationalError
 
 def ensure_admin():
     email = "admin@alexbur.net"
-    if not User.query.filter_by(email=email).first():
-        print(f"Creating admin account: {email}")
+    user = User.query.filter_by(email=email).first()
+
+    if user:
+        if not user.is_admin:
+            user.is_admin = True
+            db.session.commit()
+            print("✅ Existing user updated to admin.")
+        else:
+            print("✅ Admin user already exists.")
+    else:
+        print(f"➕ Creating new admin account: {email}")
         user = User(email=email, is_admin=True)
-        user.set_password("changeme123")  # Replace this!
+        user.set_password("changeme123")  # You may want to rotate this
         db.session.add(user)
         db.session.commit()
-    else:
-        print("✅ Admin user already exists.")
+        print("✅ Admin user created.")
 
 if __name__ == "__main__":
     with app.app_context():
         try:
-            print("⚠️ Dropping all tables...")
-            db.drop_all()
-            db.session.commit()
-            print("✅ Tables dropped.")
-        except OperationalError as e:
-            print(f"⚠️ Could not drop tables: {e}")
-
-        # Remove old migrations folder if exists
-        if os.path.exists("migrations"):
-            print("🧹 Removing old migrations...")
-            shutil.rmtree("migrations")
-
-        try:
-            print("📁 Initializing migrations...")
-            init()
-            print("📝 Generating initial migration...")
-            migrate(message="initial")
-            print("📦 Upgrading database...")
+            print("🔄 Running database migration...")
+            migrate(message="auto migration")
             upgrade()
-            print("✅ Database migrated successfully.")
-        except Exception as e:
-            print(f"❌ Migration failed: {e}")
+            print("✅ Migration complete.")
+        except OperationalError as e:
+            print(f"⚠️ Migration failed or skipped: {e}")
 
         try:
             ensure_admin()
         except Exception as e:
-            print(f"⚠️  Could not create admin: {e}")
+            print(f"⚠️ Could not ensure admin: {e}")
