@@ -17,7 +17,7 @@ export default function Navbar({ loggedIn, setLoggedIn }) {
     <nav className="navbar">
       <h1>
         <Link to="/" style={{ color: "#4f83ff", textDecoration: "none" }}>
-          My Tutoring
+          Alex Burnet - Tutoring
         </Link>
       </h1>
 
