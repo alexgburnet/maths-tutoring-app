@@ -37,6 +37,7 @@ from functools import wraps
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100))
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
@@ -66,6 +67,7 @@ class Booking(db.Model):
             "topic": self.topic,
             "scheduled_time": self.scheduled_time.isoformat(),
             "slot_id": self.slot_id,
+            "user_name": self.user.name if self.user else None  # ✅ New field
         }
     
 class AvailableSlot(db.Model):
@@ -122,19 +124,20 @@ def register():
     if User.query.filter_by(email=data["email"]).first():
         return jsonify({"error": "Email already registered"}), 400
 
-    user = User(email=data["email"])
+    user = User(
+        name=data.get("name", ""),  # ✅ prevents KeyError
+        email=data["email"]
+    )
     user.set_password(data["password"])
     db.session.add(user)
     db.session.commit()
 
-    # Automatically log in and return token
     payload = {
         "user_id": user.id,
         "is_admin": user.is_admin,
         "exp": datetime.utcnow() + timedelta(hours=2)
     }
     token = pyjwt.encode(payload, SECRET_KEY, algorithm="HS256")
-
     return jsonify({"token": token})
 
 @app.route("/api/login", methods=["POST"])
@@ -218,13 +221,21 @@ def get_booking(booking_id):
     return jsonify(booking.to_dict())
 
 @app.route("/api/bookings/<int:booking_id>", methods=["DELETE"])
-def delete_booking(booking_id):
-    print(f"Received DELETE /api/bookings/{booking_id}")
+@token_required
+def delete_booking(current_user, booking_id):
     booking = Booking.query.get_or_404(booking_id)
+
+    # Admins can delete any, users can only delete their own
+    if not current_user.is_admin and booking.user_id != current_user.id:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    # Mark slot as unbooked if linked
+    if booking.slot:
+        booking.slot.booked = False
+
     db.session.delete(booking)
     db.session.commit()
-    print(f"Deleted booking {booking_id}")
-    return jsonify({"message": "Booking deleted"})
+    return jsonify({"message": "Booking cancelled"})
 
 @app.route("/api/admin/users", methods=["GET"])
 @admin_required
@@ -240,3 +251,15 @@ def get_all_users(current_user):
 def get_admin_bookings(current_user):
     bookings = Booking.query.all()
     return jsonify([b.to_dict() for b in bookings])
+
+@app.route("/api/admin/slots/<int:slot_id>", methods=["DELETE"])
+@admin_required
+def delete_slot(current_user, slot_id):
+    slot = AvailableSlot.query.get_or_404(slot_id)
+
+    if slot.booked:
+        return jsonify({"error": "Slot is already booked"}), 400
+
+    db.session.delete(slot)
+    db.session.commit()
+    return jsonify({"message": "Slot deleted"})
