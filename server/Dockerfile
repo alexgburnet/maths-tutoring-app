@@ -3,7 +3,13 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install dependencies
+# Install OS dependencies for psycopg2 and general build tools
+RUN apt-get update && apt-get install -y \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
@@ -13,4 +19,5 @@ COPY . .
 # Expose Flask port
 EXPOSE 5000
 
-CMD ["flask", "run", "--host=0.0.0.0"]
+# Run migrations & startup script, then launch app
+CMD ["sh", "-c", "flask db upgrade && python startup.py && flask run --host=0.0.0.0"]
