@@ -109,8 +109,16 @@ def register():
     user.set_password(data["password"])
     db.session.add(user)
     db.session.commit()
-    print(f"Registered user: {data['email']}")
-    return jsonify({"message": "User registered"})
+
+    # Automatically log in and return token
+    payload = {
+        "user_id": user.id,
+        "is_admin": user.is_admin,
+        "exp": datetime.utcnow() + timedelta(hours=2)
+    }
+    token = pyjwt.encode(payload, SECRET_KEY, algorithm="HS256")
+
+    return jsonify({"token": token})
 
 @app.route("/api/login", methods=["POST"])
 def login():
@@ -122,6 +130,7 @@ def login():
 
     payload = {
         "user_id": user.id,
+        "is_admin": user.is_admin,
         "exp": datetime.utcnow() + timedelta(hours=2)
     }
     token = pyjwt.encode(payload, SECRET_KEY, algorithm="HS256")
