@@ -1,25 +1,28 @@
 from app import app, db, User
 from flask_migrate import upgrade
+from sqlalchemy.exc import ProgrammingError, OperationalError
 
-with app.app_context():
-    # Run migrations (this will upgrade the DB safely)
-    print("🔄 Running migrations...")
-    upgrade()
-
-    # Ensure admin user exists
-    admin_email = "alexburnet03@gmail.com"
-    admin = User.query.filter_by(email=admin_email).first()
-
-    if not admin:
-        print(f"👤 Creating admin user: {admin_email}")
-        admin = User(email=admin_email, is_admin=True)
-        admin.set_password("changeme")  # ⚠️ Update this manually later!
-        db.session.add(admin)
+def ensure_admin():
+    email = "admin@alexbur.net"
+    if not User.query.filter_by(email=email).first():
+        print(f"Creating admin account: {email}")
+        user = User(email=email, is_admin=True)
+        user.set_password("changeme123")  # Replace this!
+        db.session.add(user)
         db.session.commit()
     else:
-        if not admin.is_admin:
-            print(f"🔐 Promoting existing user to admin: {admin_email}")
-            admin.is_admin = True
-            db.session.commit()
+        print("✅ Admin user already exists.")
 
-    print("✅ Startup checks complete.")
+if __name__ == "__main__":
+    with app.app_context():
+        try:
+            print("🔄 Running database migrations...")
+            upgrade()
+            print("✅ Migrations complete.")
+        except (ProgrammingError, OperationalError) as e:
+            print(f"⚠️  Migration skipped or failed: {e}")
+
+        try:
+            ensure_admin()
+        except Exception as e:
+            print(f"⚠️  Could not create admin: {e}")
