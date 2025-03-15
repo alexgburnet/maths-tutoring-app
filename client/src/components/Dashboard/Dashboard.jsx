@@ -10,6 +10,16 @@ export default function Dashboard({ onLogout }) {
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const token = document.cookie
     .split("; ")
@@ -72,50 +82,53 @@ export default function Dashboard({ onLogout }) {
       </div>
 
       {/* Right: Session detail */}
-      {selectedBooking && window.innerWidth > 768 &&  (
-        <div className="booking-details">
-          <h3>Session Details</h3>
-          <p><strong>Topic:</strong> {selectedBooking.topic}</p>
-          <p><strong>Time:</strong> {new Date(selectedBooking.scheduled_time).toLocaleString()}</p>
-          <p><strong>Payment Reference:</strong> {selectedBooking.payment_ref}</p>
-          <p><strong>Status:</strong> {selectedBooking.is_paid ? "✅ Paid" : "❌ Unpaid"}</p>
-          {selectedBooking.zoom_link && (
-            <p>
-              <strong>Zoom Link:</strong>{" "}
-              <a
-                href={selectedBooking.zoom_link}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: "#4f83ff", textDecoration: "underline" }}
-              >
-                Join Meeting
-              </a>
-            </p>
+      {!isMobile && (
+        <div className={`booking-details ${selectedBooking ? "show" : "hidden"}`}>
+          {selectedBooking && (
+            <>
+              <h3>Session Details</h3>
+              <p><strong>Topic:</strong> {selectedBooking.topic}</p>
+              <p><strong>Time:</strong> {new Date(selectedBooking.scheduled_time).toLocaleString()}</p>
+              <p><strong>Payment Reference:</strong> {selectedBooking.payment_ref}</p>
+              <p><strong>Status:</strong> {selectedBooking.is_paid ? "✅ Paid" : "❌ Unpaid"}</p>
+              {selectedBooking.zoom_link && (
+                <p>
+                  <strong>Zoom Link:</strong>{" "}
+                  <a
+                    href={selectedBooking.zoom_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: "#4f83ff", textDecoration: "underline" }}
+                  >
+                    Join Meeting
+                  </a>
+                </p>
+              )}
+              <div style={{ marginTop: "1rem", display: "flex", gap: "1rem" }}>
+                <button onClick={() => setSelectedBooking(null)}>Close</button>
+                {new Date(selectedBooking.scheduled_time).getTime() > Date.now() && (
+                  <button
+                    disabled={cancelLoading}
+                    onClick={async () => {
+                      setCancelLoading(true);
+                      await fetch(`/api/bookings/${selectedBooking.id}`, {
+                        method: "DELETE",
+                        headers: { Authorization: token },
+                      });
+                      setCancelLoading(false);
+                      fetchBookings();
+                      setSelectedBooking(null);
+                    }}
+                  >
+                    {cancelLoading ? <span className="spinner" /> : "Cancel Booking"}
+                  </button>
+                )}
+              </div>
+            </>
           )}
-
-          <div style={{ marginTop: "1rem", display: "flex", gap: "1rem" }}>
-            <button onClick={() => setSelectedBooking(null)}>Close</button>
-
-            {new Date(selectedBooking.scheduled_time).getTime() > Date.now() && (
-              <button
-                disabled={cancelLoading}
-                onClick={async () => {
-                  setCancelLoading(true);
-                  await fetch(`/api/bookings/${selectedBooking.id}`, {
-                    method: "DELETE",
-                    headers: { Authorization: token },
-                  });
-                  setCancelLoading(false);
-                  fetchBookings();
-                  setSelectedBooking(null);
-                }}
-              >
-                {cancelLoading ? <span className="spinner" /> : "Cancel Booking"}
-              </button>
-            )}
-          </div>
         </div>
       )}
+
       {selectedBooking && window.innerWidth <= 768 && (
       <div className="mobile-modal" onClick={() => setSelectedBooking(null)}>
         <div className="modal-content" onClick={(e) => e.stopPropagation()}>

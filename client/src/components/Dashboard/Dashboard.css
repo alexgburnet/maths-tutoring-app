@@ -39,6 +39,25 @@
     background-color: #181818;
     border-left: 1px solid #2c2c2c;
     color: #e4e4e4;
+    transition: all 0.4s ease;
+    max-width: 100%;
+    opacity: 1;
+  }
+  
+  .booking-details.hidden {
+    flex: 0;
+    max-width: 0;
+    opacity: 0;
+    padding: 0;
+    overflow: hidden;
+    border-left: none;
+  }
+  
+  .booking-details.show {
+    flex: 1;
+    max-width: 500px;
+    opacity: 1;
+    padding: 1rem;
   }
   
   /* Calendar Panel (1/3 width) */
