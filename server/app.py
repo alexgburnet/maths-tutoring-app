@@ -10,7 +10,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import uuid
 from flask_migrate import Migrate
 from monzo import MonzoClient
-from zoom import create_zoom_meeting
+from zoom import create_zoom_meeting, delete_zoom_meeting
 
 # Load .env file
 load_dotenv()
@@ -84,6 +84,7 @@ class Booking(db.Model):
     is_paid = db.Column(db.Boolean, default=False)
 
     zoom_link = db.Column(db.String(512))
+    zoom_meeting_id = db.Column(db.String(128))
 
     def to_dict(self):
         return {
@@ -96,6 +97,7 @@ class Booking(db.Model):
             "payment_ref": self.payment_ref,
             "is_paid": self.is_paid,
             "zoom_link": self.zoom_link,
+            "zoom_meeting_id": self.zoom_meeting_id,
         }
     
 class AvailableSlot(db.Model):
@@ -216,6 +218,7 @@ def create_booking(current_user):
         )
 
         booking.zoom_link = zoom_meeting["join_url"]
+        booking.zoom_meeting_id = zoom_meeting["id"]
 
         db.session.add(booking)
         db.session.commit()
@@ -264,17 +267,22 @@ def get_booking(booking_id):
 def delete_booking(current_user, booking_id):
     booking = Booking.query.get_or_404(booking_id)
 
-    # Admins can delete any, users can only delete their own
-    if not current_user.is_admin and booking.user_id != current_user.id:
+    print("Zoom meeting ID:", booking.zoom_meeting_id)
+    
+    # Ensure only the owner can delete
+    if booking.user_id != current_user.id and not current_user.is_admin:
         return jsonify({"error": "Unauthorized"}), 403
 
-    # Mark slot as unbooked if linked
-    if booking.slot:
-        booking.slot.booked = False
+    if booking.zoom_meeting_id:
+        try:
+            delete_zoom_meeting(booking.zoom_meeting_id)
+        except Exception as e:
+            print(f"Warning: Failed to delete Zoom meeting: {e}")
 
     db.session.delete(booking)
     db.session.commit()
-    return jsonify({"message": "Booking cancelled"})
+
+    return jsonify({"message": "Booking deleted"})
 
 @app.route("/api/admin/users", methods=["GET"])
 @admin_required

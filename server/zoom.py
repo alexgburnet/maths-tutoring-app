@@ -58,7 +58,25 @@ def create_zoom_meeting(student_name, start_time_iso):
     }
 
     response = requests.post(url, headers=headers, json=payload)
+
     if response.status_code != 201:
         raise Exception(f"Failed to create Zoom meeting: {response.text}")
 
-    return response.json()  # Includes join_url and start_url
+    zoom_data = response.json()
+
+    return {
+        "join_url": zoom_data["join_url"],
+        "id": str(zoom_data["id"])
+    }
+
+def delete_zoom_meeting(meeting_id):
+    access_token = get_zoom_access_token()
+    url = f"https://api.zoom.us/v2/meetings/{meeting_id}"
+
+    headers = {
+        "Authorization": f"Bearer {access_token}"
+    }
+
+    response = requests.delete(url, headers=headers)
+    if response.status_code not in [204, 404]:
+        raise Exception(f"Failed to delete Zoom meeting: {response.text}")

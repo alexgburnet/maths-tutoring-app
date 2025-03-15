@@ -90,6 +90,19 @@ export default function Dashboard({ onLogout }) {
           <p><strong>Time:</strong> {new Date(selectedBooking.scheduled_time).toLocaleString()}</p>
           <p><strong>Payment Reference:</strong> {selectedBooking.payment_ref}</p>
           <p><strong>Status:</strong> {selectedBooking.is_paid ? "✅ Paid" : "❌ Unpaid"}</p>
+          {selectedBooking.zoom_link && (
+            <p>
+              <strong>Zoom Link:</strong>{" "}
+              <a
+                href={selectedBooking.zoom_link}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "#4f83ff", textDecoration: "underline" }}
+              >
+                Join Meeting
+              </a>
+            </p>
+          )}
 
           {/* Action Buttons */}
           <div style={{ marginTop: "1rem", display: "flex", gap: "1rem" }}>
