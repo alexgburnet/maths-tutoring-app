@@ -35,6 +35,15 @@ tr {
     cursor: pointer;
 }
 
+.refresh-button :hover {
+    padding: 0.5rem 1rem;
+    background-color: #3e8d40;
+    border: none;
+    border-radius: 6px;
+    color: #fff;
+    cursor: pointer;
+}
+
 .paid-button {
     padding: 0.25rem 0.5rem;
     background: #f39c12;

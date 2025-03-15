@@ -1,7 +1,7 @@
 .dashboard-grid {
     display: flex;
     gap: 2rem;
-    padding: 2rem;
+    padding: 1rem;
     height: calc(100vh - 157px); /* Keeps dashboard within viewport */
     overflow: hidden;
   }
@@ -122,12 +122,11 @@
     left: 0;
     width: 100vw;
     height: 100vh;
-    background-color: rgba(0, 0, 0, 0.7);
+    background-color: rgba(0, 0, 0, 0.6);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 1000;
-    backdrop-filter: blur(4px);
   }
   
   .modal-content {
@@ -139,4 +138,5 @@
     max-height: 80vh;
     overflow-y: auto;
     box-shadow: 0 0 20px rgba(0,0,0,0.4);
+    margin: 2rem;
   }

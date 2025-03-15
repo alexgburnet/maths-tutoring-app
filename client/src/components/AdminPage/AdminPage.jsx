@@ -6,6 +6,7 @@ export default function AdminPage() {
   const [slots, setSlots] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [paymentLoading, setPaymentLoading] = useState(false);
   const [users, setUsers] = useState([]);
   const [assigningSlotId, setAssigningSlotId] = useState(null);
 
@@ -74,12 +75,14 @@ export default function AdminPage() {
   };
 
   const handleCheckPayments = async () => {
+    setPaymentLoading(true);
     await fetch("/api/admin/check-payments", {
       method: "POST",
       headers: { Authorization: token },
     });
   
     fetchBookings(); // Refresh updated payment statuses
+    setPaymentLoading(false);
   };
 
   useEffect(() => {
@@ -214,10 +217,15 @@ export default function AdminPage() {
         <div className="button-container">
             <h3>Previous Sessions</h3>
             <button
-                onClick={handleCheckPayments}
-                className="refresh-button"
+              onClick={handleCheckPayments}
+              className="refresh-button"
+              disabled={paymentLoading}
             >
-                🔄 Refresh Payment Statuses
+              {paymentLoading ? (
+                <span className="spinner" />
+              ) : (
+                "🔄 Refresh Payment Statuses"
+              )}
             </button>
         </div>
         <table>
