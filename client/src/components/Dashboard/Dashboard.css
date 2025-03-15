@@ -1,0 +1,10 @@
+.dashboard-grid {
+    display: flex;
+    gap: 2rem;
+    padding: 2rem;
+}
+
+.session-lists {
+    flex: 2;
+    overflow-y: auto;
+}

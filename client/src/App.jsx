@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { BrowserRouter as Router, Route, Routes, Link } from "react-router-dom";
-import AuthForm from "./components/AuthForm";
-import Dashboard from "./components/Dashboard";
-import HomePage from "./components/HomePage";
-import Navbar from "./components/Navbar";
+import AuthForm from "./components/AuthForm/AuthForm";
+import Dashboard from "./components/Dashboard/Dashboard";
+import HomePage from "./components/HomePage/HomePage";
+import Navbar from "./components/Navbar/Navbar";
 import NotFound from "./components/NotFound";
 import AdminRoute from "./components/AdminRoute";
-import AdminPage from "./components/AdminPage";
+import AdminPage from "./components/AdminPage/AdminPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { getTokenFromCookie } from "./auth";
 

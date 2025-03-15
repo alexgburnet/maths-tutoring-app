@@ -1,0 +1,6 @@
+.calendar-column {
+    flex: 1.5;
+    background: #1a1a1a;
+    padding: 1rem;
+    border-radius: 12px;
+  }

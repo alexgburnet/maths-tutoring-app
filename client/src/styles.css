@@ -3,177 +3,10 @@ body {
     font-family: "Segoe UI", sans-serif;
     background-color: #121212; /* Dark background */
     color: #e4e4e4; /* Light text */
-  }
+}
   
-  form {
-    max-width: 400px;
-    margin: 4rem auto;
-    padding: 2rem;
-    background: #1e1e1e; /* Dark card background */
-    border-radius: 12px;
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.6);
-  }
-  
-  input,
-  button {
-    width: 100%;
-    padding: 0.75rem;
-    margin-top: 1rem;
-    font-size: 1rem;
-    border-radius: 6px;
-    border: 1px solid #333;
-    background-color: #181818;
-    color: #e4e4e4;
-  }
-  
-  input::placeholder {
-    color: #aaa;
-  }
-  
-  button {
-    background-color: #4f83ff;
-    color: white;
-    border: none;
-    cursor: pointer;
-  }
-  
-  button:hover {
-    background-color: #3a6fe7;
-  }
-  
-  .navbar {
-    background-color: #1e1e1e;
-    padding: 1rem 2rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid #2c2c2c;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-    position: sticky;
-    top: 0;
-    z-index: 10;
-  }
-  
-  .navbar h1 {
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: #4f83ff;
-    margin: 0;
-  }
-  
-  .navbar .nav-links {
-    display: flex;
-    gap: 1.2rem;
-  }
-  
-  .navbar a {
-    text-decoration: none;
-    color: #e4e4e4;
-    font-weight: 500;
-  }
-  
-  .navbar a:hover {
-    color: #4f83ff;
-    transition: color 0.2s ease-in-out;
-  }
 
-  .hero {
-    text-align: center;
-    padding: 5rem 1rem 3rem;
-    background-color: #1e1e1e;
-    border-bottom: 1px solid #2c2c2c;
-  }
-  
-  .hero h1 {
-    font-size: 2.5rem;
-    margin-bottom: 0.5rem;
-  }
-  
-  .hero p {
-    font-size: 1.2rem;
-    margin-bottom: 2rem;
-  }
-  
-  .primary-btn {
-    background-color: #4f83ff;
-    color: white;
-    font-weight: bold;
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
-    border: none;
-    cursor: pointer;
-    font-size: 1rem;
-  }
-  
-  .primary-btn:hover {
-    background-color: #3a6fe7;
-  }
-  
-  section {
-    max-width: 800px;
-    margin: 2rem auto;
-    padding: 1rem;
-  }
-
-  .auth-container form {
-    max-width: 400px;
-    margin: 4rem auto;
-    padding: 2rem;
-    background: #1e1e1e;
-    border-radius: 12px;
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.6);
-  }
-
-  .dashboard-grid {
-    display: flex;
-    gap: 2rem;
-    padding: 2rem;
-  }
-  
-  .session-lists {
-    flex: 2;
-    overflow-y: auto;
-  }
-  
-  .calendar-column {
-    flex: 1.5;
-    background: #1a1a1a;
-    padding: 1rem;
-    border-radius: 12px;
-  }
-
-  .dashboard-grid {
-    display: flex;
-    gap: 2rem;
-    padding: 2rem;
-  }
-  
-  .session-lists {
-    overflow-y: auto;
-  }
-  
-  .booking-details {
-    background: #222;
-    border-radius: 12px;
-    padding: 1rem;
-    color: #fff;
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-  
-  td, th {
-    padding: 0.75rem;
-    text-align: left;
-  }
-  
-  tr:nth-child(even) {
-    background-color: #1a1a1a;
-  }
-
-  .spinner {
+.spinner {
     display: inline-block;
     width: 18px;
     height: 18px;
@@ -182,10 +15,10 @@ body {
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
     vertical-align: middle;
-  }
+}
   
-  @keyframes spin {
+@keyframes spin {
     to {
       transform: rotate(360deg);
     }
-  }
+}

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import BookingCard from "../BookingCard/BookingCard";
 import Calendar from "../Calendar/Calendar";
 import BookingModal from "../BookingModal/BookingModal";
+import "./Dashboard.css";
 
 export default function Dashboard({ onLogout }) {
   const [cancelLoading, setCancelLoading] = useState(false);

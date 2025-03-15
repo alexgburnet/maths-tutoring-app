@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import './AdminPage.css';
 
 export default function AdminPage() {
   const [startTime, setStartTime] = useState("");

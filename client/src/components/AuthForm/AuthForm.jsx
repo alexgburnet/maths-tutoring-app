@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { login, register } from "../../api";
 import { useNavigate } from "react-router-dom";
+import "./AuthForm.css";
 
 export default function AuthForm({ onAuth }) {
   const [isLogin, setIsLogin] = useState(true);

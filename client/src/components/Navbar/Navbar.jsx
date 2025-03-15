@@ -1,6 +1,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { getTokenFromCookie, clearTokenCookie } from "../../auth";
 import { isUserAdmin } from "../../auth";
+import "./Navbar.css";
 
 export default function Navbar({ loggedIn, setLoggedIn }) {
   const location = useLocation();
