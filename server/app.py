@@ -35,28 +35,11 @@ SECRET_KEY = os.getenv("SECRET_KEY", "devsecret")
 
 from functools import wraps
 
-# Auth Decorator
-def token_required(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        token = request.headers.get("Authorization")
-        if not token:
-            return jsonify({"error": "Token is missing"}), 401
-        try:
-            payload = pyjwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-            user = User.query.get(payload["user_id"])
-            if not user:
-                raise Exception("User not found")
-        except Exception as e:
-            return jsonify({"error": f"Invalid token: {str(e)}"}), 401
-
-        return f(user, *args, **kwargs)
-    return decorated
-
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(256), nullable=False)  # ⬅️ updated
+    password_hash = db.Column(db.String(256), nullable=False)
+    is_admin = db.Column(db.Boolean, default=False)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -81,6 +64,33 @@ class Booking(db.Model):
             "topic": self.topic,
             "scheduled_time": self.scheduled_time.isoformat()
         }
+    
+# Auth Decorator
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.headers.get("Authorization")
+        if not token:
+            return jsonify({"error": "Token is missing"}), 401
+        try:
+            payload = pyjwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+            user = User.query.get(payload["user_id"])
+            if not user:
+                raise Exception("User not found")
+        except Exception as e:
+            return jsonify({"error": f"Invalid token: {str(e)}"}), 401
+
+        return f(user, *args, **kwargs)
+    return decorated
+    
+def admin_required(f):
+    @wraps(f)
+    @token_required
+    def decorated(current_user, *args, **kwargs):
+        if not current_user.is_admin:
+            return jsonify({"error": "Admin access required"}), 403
+        return f(current_user, *args, **kwargs)
+    return decorated
 
 # Create tables
 with app.app_context():
@@ -114,7 +124,7 @@ def login():
         "user_id": user.id,
         "exp": datetime.utcnow() + timedelta(hours=2)
     }
-    token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
+    token = pyjwt.encode(payload, SECRET_KEY, algorithm="HS256")
 
     print(f"User {user.email} logged in")
     return jsonify({"token": token})
@@ -159,3 +169,18 @@ def delete_booking(booking_id):
     db.session.commit()
     print(f"Deleted booking {booking_id}")
     return jsonify({"message": "Booking deleted"})
+
+@app.route("/api/admin/users", methods=["GET"])
+@admin_required
+def get_all_users(current_user):
+    users = User.query.all()
+    return jsonify([
+        {"id": u.id, "email": u.email, "is_admin": u.is_admin}
+        for u in users
+    ])
+
+@app.route("/api/admin/bookings", methods=["GET"])
+@admin_required
+def get_admin_bookings(current_user):
+    bookings = Booking.query.all()
+    return jsonify([b.to_dict() for b in bookings])
