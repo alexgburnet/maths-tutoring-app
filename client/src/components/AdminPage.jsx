@@ -247,7 +247,30 @@ export default function AdminPage() {
                     <td>{dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
                     <td>{b.user_name || b.student_name}</td>
                     <td style={{ color: b.is_paid ? "#4caf50" : "#ff5252", fontWeight: "bold" }}>
-                    {b.is_paid ? "✅" : "❌"}
+                        {b.is_paid ? (
+                            "✅"
+                        ) : (
+                            <button
+                            onClick={async () => {
+                                await fetch(`/api/admin/mark-paid/${b.id}`, {
+                                method: "POST",
+                                headers: { Authorization: token },
+                                });
+                                fetchBookings(); // Refresh the list
+                            }}
+                            style={{
+                                padding: "0.25rem 0.5rem",
+                                background: "#f39c12",
+                                color: "#fff",
+                                border: "none",
+                                borderRadius: "4px",
+                                cursor: "pointer",
+                                fontSize: "0.85rem"
+                            }}
+                            >
+                            Mark as Paid
+                            </button>
+                        )}
                     </td>
                 </tr>
                 );

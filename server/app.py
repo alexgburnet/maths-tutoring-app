@@ -320,3 +320,11 @@ def assign_slot(current_user):
 def manual_payment_check(current_user):
     update_paid_status_for_bookings()
     return jsonify({"status": "Payment statuses updated."})
+
+@app.route("/api/admin/mark-paid/<int:booking_id>", methods=["POST"])
+@admin_required
+def mark_booking_paid(current_user, booking_id):
+    booking = Booking.query.get_or_404(booking_id)
+    booking.is_paid = True
+    db.session.commit()
+    return jsonify({"status": "Booking marked as paid"})
