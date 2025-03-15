@@ -35,9 +35,9 @@ export default function Navbar({ loggedIn, setLoggedIn }) {
       <div className={`nav-links ${menuOpen ? "open" : ""}`}>
         {!onDashboard && (
           <>
-            <a href="#tutoring" onClick={() => setMenuOpen(false)}>Tutoring</a>
-            <a href="#about" onClick={() => setMenuOpen(false)}>Me</a>
-            <a href="#contact" onClick={() => setMenuOpen(false)}>Contact</a>
+            <Link to="/#tutoring" onClick={() => setMenuOpen(false)}>Tutoring</Link>
+            <Link to="/#about" onClick={() => setMenuOpen(false)}>Me</Link>
+            <Link to="/#contact" onClick={() => setMenuOpen(false)}>Contact</Link>
           </>
         )}
 
