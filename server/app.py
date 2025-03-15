@@ -274,3 +274,27 @@ def delete_slot(current_user, slot_id):
     db.session.delete(slot)
     db.session.commit()
     return jsonify({"message": "Slot deleted"})
+
+@app.route("/api/admin/assign-slot", methods=["POST"])
+@admin_required
+def assign_slot(current_user):
+    data = request.json
+    slot = AvailableSlot.query.get_or_404(data["slot_id"])
+    user = User.query.get_or_404(data["user_id"])
+
+    if slot.booked:
+        return jsonify({"error": "Slot already booked"}), 400
+
+    booking = Booking(
+        student_name=user.email.split("@")[0],  # or you can use user.name if stored
+        topic=data.get("topic", "Admin-assigned"),
+        scheduled_time=slot.start_time,
+        user_id=user.id,
+        slot_id=slot.id,
+    )
+
+    slot.booked = True
+    db.session.add(booking)
+    db.session.commit()
+
+    return jsonify(booking.to_dict()), 201
