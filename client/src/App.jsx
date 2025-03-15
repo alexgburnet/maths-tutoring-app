@@ -10,14 +10,24 @@ function App() {
 
   return (
     <Router>
-      <nav>
-        {!loggedIn ? (
-          <>
-            <Link to="/">Login</Link> | <Link to="/signup">Sign Up</Link>
-          </>
-        ) : (
-          <Link to="/dashboard">Dashboard</Link>
-        )}
+      <nav className="navbar">
+        <h1>Alex Burnet - Tutoring</h1>
+        <div className="nav-links">
+          {!loggedIn ? (
+            <>
+              <Link to="/">Login</Link>
+              <Link to="/signup">Sign Up</Link>
+            </>
+          ) : (
+            <>
+              <Link to="/dashboard">Dashboard</Link>
+              <Link to="/" onClick={() => {
+                document.cookie = "token=; Max-Age=0; path=/";
+                setLoggedIn(false);
+              }}>Logout</Link>
+            </>
+          )}
+        </div>
       </nav>
 
       <Routes>
