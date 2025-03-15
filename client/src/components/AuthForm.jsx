@@ -4,22 +4,26 @@ import { useNavigate } from "react-router-dom";
 
 export default function AuthForm({ onAuth }) {
   const [isLogin, setIsLogin] = useState(true);
+  const [name, setName] = useState(""); // 👈 Add name state
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
+
     const res = isLogin
       ? await login(email, password)
-      : await register(email, password);
+      : await register(name, email, password); // 👈 Pass name too
 
     if (res.token) {
       document.cookie = `token=${res.token}; path=/; max-age=7200`;
-      onAuth(); // sets loggedIn=true
+      onAuth();
       navigate("/dashboard");
     } else {
-      alert(res.error || "Something went wrong.");
+      setError(res.error || "Something went wrong.");
     }
   };
 
@@ -27,6 +31,16 @@ export default function AuthForm({ onAuth }) {
     <div className="auth-container">
       <form onSubmit={handleSubmit}>
         <h2>{isLogin ? "Log In" : "Sign Up"}</h2>
+
+        {!isLogin && (
+          <input
+            type="text"
+            placeholder="Your Name"
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        )}
 
         <input
           type="email"
@@ -52,7 +66,10 @@ export default function AuthForm({ onAuth }) {
               Don’t have an account?{" "}
               <span
                 style={{ color: "#4f83ff", cursor: "pointer" }}
-                onClick={() => setIsLogin(false)}
+                onClick={() => {
+                  setIsLogin(false);
+                  setError("");
+                }}
               >
                 Sign Up
               </span>
@@ -62,13 +79,20 @@ export default function AuthForm({ onAuth }) {
               Already have an account?{" "}
               <span
                 style={{ color: "#4f83ff", cursor: "pointer" }}
-                onClick={() => setIsLogin(true)}
+                onClick={() => {
+                  setIsLogin(true);
+                  setError("");
+                }}
               >
                 Log In
               </span>
             </>
           )}
         </p>
+
+        {error && (
+          <p style={{ color: "#ff6b6b", marginTop: "0.5rem" }}>{error}</p>
+        )}
       </form>
     </div>
   );

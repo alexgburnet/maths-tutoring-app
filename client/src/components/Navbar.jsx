@@ -1,5 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { getTokenFromCookie, clearTokenCookie } from "../auth";
+import { isUserAdmin } from "../auth";
 
 export default function Navbar({ loggedIn, setLoggedIn }) {
   const location = useLocation();
@@ -27,6 +28,10 @@ export default function Navbar({ loggedIn, setLoggedIn }) {
             <a href="#about">About Me</a>
             <a href="#contact">Contact</a>
           </>
+        )}
+
+        {loggedIn && isUserAdmin() && (
+        <Link to="/admin">Admin</Link>
         )}
 
         {loggedIn ? (

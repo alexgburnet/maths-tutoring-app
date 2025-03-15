@@ -16,3 +16,19 @@ export function isTokenValid(token) {
     return false;
   }
 }
+
+export function isUserAdmin() {
+  try {
+    const token = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("token="))
+      ?.split("=")[1];
+
+    if (!token) return false;
+
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return payload.is_admin === true;
+  } catch {
+    return false;
+  }
+}
