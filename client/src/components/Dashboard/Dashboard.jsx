@@ -61,24 +61,32 @@ export default function Dashboard({ onLogout }) {
       {/* Left: Session list */}
       <div className="session-list-column">
         <h2>Upcoming Sessions</h2>
-        {upcoming.map((b) => (
-          <div key={b.id} onClick={() => setSelectedBooking(b)}>
-            <BookingCard
-              booking={b}
-              isSelected={selectedBooking?.id === b.id}
-            />
-          </div>
-        ))}
+        {upcoming.length === 0 ? (
+          <p className="empty-text">No upcoming sessions</p>
+        ) : (
+          upcoming.map((b) => (
+            <div key={b.id} onClick={() => setSelectedBooking(b)}>
+              <BookingCard
+                booking={b}
+                isSelected={selectedBooking?.id === b.id}
+              />
+            </div>
+          ))
+        )}
 
         <h2 style={{ marginTop: "2rem" }}>Previous Sessions</h2>
-        {previous.map((b) => (
-          <div key={b.id} onClick={() => setSelectedBooking(b)}>
-            <BookingCard
-              booking={b}
-              isSelected={selectedBooking?.id === b.id}
-            />
-          </div>
-        ))}
+        {previous.length === 0 ? (
+          <p className="empty-text">No previous sessions</p>
+        ) : (
+          previous.map((b) => (
+            <div key={b.id} onClick={() => setSelectedBooking(b)}>
+              <BookingCard
+                booking={b}
+                isSelected={selectedBooking?.id === b.id}
+              />
+            </div>
+          ))
+        )}
       </div>
 
       {/* Right: Session detail */}
