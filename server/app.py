@@ -7,6 +7,8 @@ from datetime import datetime
 import jwt as pyjwt
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
+import uuid
+from flask_migrate import Migrate
 
 # Load .env file
 load_dotenv()
@@ -30,6 +32,7 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 # Init DB
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 
 SECRET_KEY = os.getenv("SECRET_KEY", "devsecret")
 
@@ -60,6 +63,9 @@ class Booking(db.Model):
     slot_id = db.Column(db.Integer, db.ForeignKey("available_slot.id"))
     slot = db.relationship("AvailableSlot", backref="booking")
 
+    payment_ref = db.Column(db.String(64), unique=True)
+    is_paid = db.Column(db.Boolean, default=False)
+
     def to_dict(self):
         return {
             "id": self.id,
@@ -67,7 +73,9 @@ class Booking(db.Model):
             "topic": self.topic,
             "scheduled_time": self.scheduled_time.isoformat(),
             "slot_id": self.slot_id,
-            "user_name": self.user.name if self.user else None  # ✅ New field
+            "user_name": self.user.name if self.user else None,
+            "payment_ref": self.payment_ref,
+            "is_paid": self.is_paid,
         }
     
 class AvailableSlot(db.Model):
@@ -169,12 +177,15 @@ def create_booking(current_user):
         if not slot:
             return jsonify({"error": "Slot is not available"}), 400
 
+        payment_ref = str(uuid.uuid4())[:8]  # Short, unique, user-safe
+
         booking = Booking(
             student_name=data["student_name"],
             topic=data["topic"],
             scheduled_time=scheduled_time,
             user_id=current_user.id,
-            slot_id=slot.id  # 👈 link to the slot
+            slot_id=slot.id,
+            payment_ref=payment_ref
         )
 
         db.session.add(booking)
