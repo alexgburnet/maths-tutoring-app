@@ -5,11 +5,21 @@ export default function AdminPage() {
   const [slots, setSlots] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [users, setUsers] = useState([]);
+  const [assigningSlotId, setAssigningSlotId] = useState(null);
 
   const token = document.cookie
     .split("; ")
     .find((row) => row.startsWith("token="))
     ?.split("=")[1];
+
+    const fetchUsers = async () => {
+        const res = await fetch("/api/admin/users", {
+          headers: { Authorization: token },
+        });
+        const data = await res.json();
+        setUsers(data);
+      };
 
   const fetchSlots = async () => {
     const res = await fetch("/api/slots", {
@@ -65,6 +75,7 @@ export default function AdminPage() {
   useEffect(() => {
     fetchSlots();
     fetchBookings();
+    fetchUsers();
   }, []);
 
   const upcomingBookings = bookings.filter(
@@ -95,42 +106,129 @@ export default function AdminPage() {
       </div>
 
       <h3>Available Slots</h3>
-      <ul>
-        {slots.map((slot) => (
-          <li key={slot.id}>
-            {new Date(slot.start_time).toLocaleString()} —{" "}
-            {slot.booked ? "Booked" : "Available"}
-            {!slot.booked && (
-              <button
-                onClick={() => handleDeleteSlot(slot.id)}
-                style={{ marginLeft: "1rem" }}
-              >
-                ❌ Delete
-              </button>
-            )}
-          </li>
-        ))}
-      </ul>
+        <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "1rem" }}>
+        <thead>
+            <tr>
+            <th>Date</th>
+            <th>Time</th>
+            <th>Cancel</th>
+            <th>Assign</th>
+            </tr>
+        </thead>
+        <tbody>
+            {slots.map((slot) => {
+            const dt = new Date(slot.start_time);
+            return (
+                <tr key={slot.id} style={{ borderBottom: "1px solid #444" }}>
+                <td>{dt.toLocaleDateString()}</td>
+                <td>{dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
+                <td>
+                    {!slot.booked && (
+                    <button onClick={() => handleDeleteSlot(slot.id)}>❌</button>
+                    )}
+                </td>
+                <td>
+                    {!slot.booked && assigningSlotId === slot.id ? (
+                    <select
+                        onChange={async (e) => {
+                        const userId = e.target.value;
+                        await fetch("/api/admin/assign-slot", {
+                            method: "POST",
+                            headers: {
+                            "Content-Type": "application/json",
+                            Authorization: token,
+                            },
+                            body: JSON.stringify({ user_id: userId, slot_id: slot.id }),
+                        });
+                        setAssigningSlotId(null);
+                        fetchSlots();
+                        fetchBookings();
+                        }}
+                    >
+                        <option value="">Select User</option>
+                        {users.map((u) => (
+                        <option key={u.id} value={u.id}>
+                            {u.email}
+                        </option>
+                        ))}
+                    </select>
+                    ) : (
+                    !slot.booked && (
+                        <button onClick={() => setAssigningSlotId(slot.id)}>Assign</button>
+                    )
+                    )}
+                </td>
+                </tr>
+            );
+            })}
+        </tbody>
+        </table>
 
-      <h3 style={{ marginTop: "3rem" }}>Upcoming Booked Sessions</h3>
-      {upcomingBookings.length === 0 ? (
-        <p>No upcoming sessions</p>
-      ) : (
-        <ul>
-          {upcomingBookings.map((b) => (
-            <li key={b.id}>
-              {new Date(b.scheduled_time).toLocaleString()} —{" "}
-              {b.user_name || b.student_name} ({b.topic})
-              <button
-                onClick={() => handleCancelBooking(b.id)}
-                style={{ marginLeft: "1rem" }}
-              >
-                ❌ Cancel
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+        <h3 style={{ marginTop: "3rem" }}>Upcoming Booked Sessions</h3>
+        <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "1rem" }}>
+        <thead>
+            <tr>
+            <th>Date</th>
+            <th>Time</th>
+            <th>Student</th>
+            <th>Topic</th>
+            <th>Cancel</th>
+            </tr>
+        </thead>
+        <tbody>
+            {bookings
+            .filter((b) => new Date(b.scheduled_time) > new Date())
+            .map((b) => {
+                const dt = new Date(b.scheduled_time);
+                return (
+                <tr key={b.id} style={{ borderBottom: "1px solid #444" }}>
+                    <td>{dt.toLocaleDateString()}</td>
+                    <td>{dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
+                    <td>{b.user_name || b.student_name}</td>
+                    <td>{b.topic}</td>
+                    <td>
+                    <button
+                        onClick={() => handleCancelBooking(b.id)}
+                        style={{ cursor: "pointer" }}
+                    >
+                        ❌
+                    </button>
+                    </td>
+                </tr>
+                );
+            })}
+        </tbody>
+        </table>
+
+        
+        <h3 style={{ marginTop: "3rem" }}>Previous Sessions</h3>
+        <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "1rem" }}>
+        <thead>
+            <tr>
+            <th>Date</th>
+            <th>Time</th>
+            <th>Student</th>
+            <th>Paid</th>
+            </tr>
+        </thead>
+        <tbody>
+            {bookings
+            .filter((b) => new Date(b.scheduled_time) <= new Date())
+            .map((b) => {
+                const dt = new Date(b.scheduled_time);
+                return (
+                <tr key={b.id} style={{ borderBottom: "1px solid #444" }}>
+                    <td>{dt.toLocaleDateString()}</td>
+                    <td>{dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
+                    <td>{b.user_name || b.student_name}</td>
+                    <td style={{ color: b.is_paid ? "#4caf50" : "#ff5252", fontWeight: "bold" }}>
+                    {b.is_paid ? "✅" : "❌"}
+                    </td>
+                </tr>
+                );
+            })}
+        </tbody>
+        </table>
     </div>
   );
 }
