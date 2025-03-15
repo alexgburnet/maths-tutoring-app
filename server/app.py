@@ -46,8 +46,7 @@ class User(db.Model):
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
-
-# Booking model
+    
 class Booking(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     student_name = db.Column(db.String(100), nullable=False)
@@ -57,12 +56,30 @@ class Booking(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     user = db.relationship("User", backref="bookings")
 
+    slot_id = db.Column(db.Integer, db.ForeignKey("available_slot.id"))
+    slot = db.relationship("AvailableSlot", backref="booking")
+
     def to_dict(self):
         return {
             "id": self.id,
             "student_name": self.student_name,
             "topic": self.topic,
-            "scheduled_time": self.scheduled_time.isoformat()
+            "scheduled_time": self.scheduled_time.isoformat(),
+            "slot_id": self.slot_id,
+        }
+    
+class AvailableSlot(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    start_time = db.Column(db.DateTime, nullable=False)
+    duration_minutes = db.Column(db.Integer, default=60)
+    booked = db.Column(db.Boolean, default=False)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "start_time": self.start_time.isoformat(),
+            "duration_minutes": self.duration_minutes,
+            "booked": self.booked,
         }
     
 # Auth Decorator
@@ -142,20 +159,50 @@ def login():
 @token_required
 def create_booking(current_user):
     data = request.json
-    print(f"User {current_user.email} creating booking with: {data}")
     try:
+        scheduled_time = datetime.fromisoformat(data["scheduled_time"])
+        slot = AvailableSlot.query.filter_by(start_time=scheduled_time, booked=False).first()
+
+        if not slot:
+            return jsonify({"error": "Slot is not available"}), 400
+
         booking = Booking(
             student_name=data["student_name"],
             topic=data["topic"],
-            scheduled_time=datetime.fromisoformat(data["scheduled_time"]),
-            user_id=current_user.id  # 👈 tie to logged-in user
+            scheduled_time=scheduled_time,
+            user_id=current_user.id,
+            slot_id=slot.id  # 👈 link to the slot
         )
+
         db.session.add(booking)
+        slot.booked = True  # 👈 mark as booked
         db.session.commit()
+
         return jsonify(booking.to_dict()), 201
+
     except Exception as e:
-        print(f"Error creating booking: {e}")
         return jsonify({"error": str(e)}), 400
+    
+@app.route("/api/admin/slots", methods=["POST"])
+@admin_required
+def add_slot(current_user):
+    data = request.json
+    try:
+        slot = AvailableSlot(
+            start_time=datetime.fromisoformat(data["start_time"]),
+            duration_minutes=data.get("duration_minutes", 60),
+        )
+        db.session.add(slot)
+        db.session.commit()
+        return jsonify(slot.to_dict()), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+    
+@app.route("/api/slots", methods=["GET"])
+@token_required
+def get_available_slots(current_user):
+    slots = AvailableSlot.query.filter_by(booked=False).order_by(AvailableSlot.start_time).all()
+    return jsonify([s.to_dict() for s in slots])
 
 @app.route("/api/bookings", methods=["GET"])
 @token_required
