@@ -60,15 +60,19 @@
   @media (max-width: 768px) {
     .dashboard-grid {
       flex-direction: column;
-      height: auto;
-      overflow: auto;
+      height: calc(100vh - 157px);
       padding: 1rem;
+      gap: 1rem;
+      overflow: hidden;
     }
   
-    .session-lists {
-      flex: unset;
-      max-height: 60vh;
-      margin-bottom: 1rem;
+    .session-lists,
+    .calendar-column {
+      flex: none;
+      height: calc((100vh - 157px) / 2);
+      max-height: calc((100vh - 157px) / 2);
+      border-radius: 12px;
+      overflow: hidden;
     }
   
     .session-split {
@@ -77,23 +81,43 @@
     }
   
     .session-list-column {
-      max-height: 30vh;
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem;
     }
   
     .booking-details {
-      border-left: none;
-      border-top: 1px solid #2c2c2c;
-      max-height: 30vh;
-    }
-  
-    .calendar-column {
-      flex: unset;
-      max-height: 40vh;
-      overflow-y: auto;
+      display: none; /* Hide inline panel on mobile */
     }
   
     .calendar-column > * {
-      flex: unset;
+      flex: 1;
       overflow-y: auto;
     }
+  }
+
+
+  .mobile-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+  }
+  
+  .modal-content {
+    background-color: #1e1e1e;
+    color: #ffffff;
+    padding: 2rem;
+    border-radius: 12px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 0 20px rgba(0,0,0,0.4);
   }

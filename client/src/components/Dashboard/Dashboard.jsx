@@ -72,7 +72,7 @@ export default function Dashboard({ onLogout }) {
       </div>
 
       {/* Right: Session detail */}
-      {selectedBooking && (
+      {selectedBooking && window.innerWidth > 768 &&  (
         <div className="booking-details">
           <h3>Session Details</h3>
           <p><strong>Topic:</strong> {selectedBooking.topic}</p>
@@ -116,6 +116,35 @@ export default function Dashboard({ onLogout }) {
           </div>
         </div>
       )}
+      {selectedBooking && window.innerWidth <= 768 && (
+      <div className="mobile-modal" onClick={() => setSelectedBooking(null)}>
+        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <h3>Session Details</h3>
+          <p><strong>Topic:</strong> {selectedBooking.topic}</p>
+          <p><strong>Time:</strong> {new Date(selectedBooking.scheduled_time).toLocaleString()}</p>
+          <p><strong>Payment Reference:</strong> {selectedBooking.payment_ref}</p>
+          <p><strong>Status:</strong> {selectedBooking.is_paid ? "✅ Paid" : "❌ Unpaid"}</p>
+
+          {selectedBooking.zoom_link && (
+            <p>
+              <strong>Zoom Link:</strong>{" "}
+              <a
+                href={selectedBooking.zoom_link}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "#4f83ff", textDecoration: "underline" }}
+              >
+                Join Meeting
+              </a>
+            </p>
+          )}
+
+          <div style={{ marginTop: "1rem", display: "flex", gap: "1rem", justifyContent: "flex-end" }}>
+            <button onClick={() => setSelectedBooking(null)}>Close</button>
+          </div>
+        </div>
+      </div>
+    )}
     </div>
   </div>
 
