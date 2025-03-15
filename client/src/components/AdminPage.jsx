@@ -72,6 +72,15 @@ export default function AdminPage() {
     fetchSlots(); // refresh slot availability
   };
 
+  const handleCheckPayments = async () => {
+    await fetch("/api/admin/check-payments", {
+      method: "POST",
+      headers: { Authorization: token },
+    });
+  
+    fetchBookings(); // Refresh updated payment statuses
+  };
+
   useEffect(() => {
     fetchSlots();
     fetchBookings();
@@ -200,8 +209,24 @@ export default function AdminPage() {
         </tbody>
         </table>
 
-        
+
         <h3 style={{ marginTop: "3rem" }}>Previous Sessions</h3>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "3rem" }}>
+            <h3>Previous Sessions</h3>
+            <button
+                onClick={handleCheckPayments}
+                style={{
+                padding: "0.5rem 1rem",
+                background: "#4caf50",
+                border: "none",
+                borderRadius: "6px",
+                color: "#fff",
+                cursor: "pointer"
+                }}
+            >
+                🔄 Refresh Payment Statuses
+            </button>
+        </div>
         <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "1rem" }}>
         <thead>
             <tr>
