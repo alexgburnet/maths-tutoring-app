@@ -1,0 +1,26 @@
+name: Deploy to Azure VM
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: 📦 Checkout code
+        uses: actions/checkout@v3
+
+      - name: 🛠 Write .env file
+        run: echo "${{ secrets.ENV_CONTENT }}" > .env
+
+      - name: 🧹 Stop containers (if running)
+        run: docker-compose down || true
+
+      - name: 🐋 Build and start containers
+        run: docker-compose up -d --build
+
+      - name: ✅ Show running containers
+        run: docker ps

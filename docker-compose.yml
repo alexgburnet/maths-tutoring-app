@@ -12,5 +12,31 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
 
+  backend:
+    build: ./server
+    container_name: tutoring-backend
+    restart: always
+    volumes:
+      - ./server:/app
+    environment:
+      FLASK_APP: app.py
+      FLASK_ENV: production
+      POSTGRES_HOST: db
+    ports:
+      - "5000:5000"
+    depends_on:
+      - db
+    env_file:
+      - .env
+
+  frontend:
+    build: ./client
+    container_name: tutoring-frontend
+    restart: always
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
 volumes:
   pgdata:
