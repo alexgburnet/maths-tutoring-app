@@ -20,7 +20,7 @@ export default function Navbar({ loggedIn, setLoggedIn }) {
   };
 
   return (
-    <nav className="navbar">
+    <nav className={`navbar ${menuOpen ? "menu-open" : ""}`}>
       <h1>
         <Link to="/" style={{ color: "#4f83ff", textDecoration: "none" }}>
           Alex Burnet - Tutoring
@@ -28,33 +28,37 @@ export default function Navbar({ loggedIn, setLoggedIn }) {
       </h1>
 
       <div className="hamburger" onClick={toggleMenu}>
-        <div className={menuOpen ? "bar open" : "bar"}></div>
-        <div className={menuOpen ? "bar open" : "bar"}></div>
-        <div className={menuOpen ? "bar open" : "bar"}></div>
+        <div className={`bar ${menuOpen ? "open" : ""}`}></div>
+        <div className={`bar ${menuOpen ? "open" : ""}`}></div>
+        <div className={`bar ${menuOpen ? "open" : ""}`}></div>
       </div>
-
       <div className={`nav-links ${menuOpen ? "open" : ""}`}>
         {!onDashboard && (
           <>
-            <a href="#tutoring">Tutoring</a>
-            <a href="#about">Me</a>
-            <a href="#contact">Contact</a>
+            <a href="#tutoring" onClick={() => setMenuOpen(false)}>Tutoring</a>
+            <a href="#about" onClick={() => setMenuOpen(false)}>Me</a>
+            <a href="#contact" onClick={() => setMenuOpen(false)}>Contact</a>
           </>
         )}
 
-        {loggedIn && isUserAdmin() && <Link to="/admin">Admin</Link>}
+        {loggedIn && isUserAdmin() && (
+          <Link to="/admin" onClick={() => setMenuOpen(false)}>Admin</Link>
+        )}
 
         {loggedIn ? (
           <>
-            {!onDashboard && <Link to="/dashboard">Dashboard</Link>}
+            {!onDashboard && (
+              <Link to="/dashboard" onClick={() => setMenuOpen(false)}>Dashboard</Link>
+            )}
             <button onClick={handleLogout} className="logout-button">
               Logout
             </button>
           </>
         ) : (
-          <Link to="/auth">Login</Link>
+          <Link to="/auth" onClick={() => setMenuOpen(false)}>Login</Link>
         )}
       </div>
+    {menuOpen && <div className="nav-blur-overlay" onClick={() => setMenuOpen(false)} />}
     </nav>
   );
 }
