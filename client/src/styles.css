@@ -123,3 +123,21 @@ body {
     border-radius: 12px;
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.6);
   }
+
+  .dashboard-grid {
+    display: flex;
+    gap: 2rem;
+    padding: 2rem;
+  }
+  
+  .session-lists {
+    flex: 2;
+    overflow-y: auto;
+  }
+  
+  .calendar-column {
+    flex: 1.5;
+    background: #1a1a1a;
+    padding: 1rem;
+    border-radius: 12px;
+  }
