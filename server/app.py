@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 import uuid
 from flask_migrate import Migrate
+from monzo import MonzoClient
 
 # Load .env file
 load_dotenv()
@@ -35,6 +36,21 @@ db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
 SECRET_KEY = os.getenv("SECRET_KEY", "devsecret")
+
+def update_paid_status_for_bookings():
+    monzo = MonzoClient()
+    unpaid_bookings = Booking.query.filter_by(is_paid=False).all()
+    
+    for booking in unpaid_bookings:
+        if not booking.payment_ref:
+            continue
+
+        matches = monzo.get_transactions_by_reference(booking.payment_ref)
+        if matches:
+            booking.is_paid = True
+            print(f"[✓] Marked booking {booking.id} as paid.")
+    
+    db.session.commit()
 
 from functools import wraps
 
@@ -298,3 +314,9 @@ def assign_slot(current_user):
     db.session.commit()
 
     return jsonify(booking.to_dict()), 201
+
+@app.route("/api/admin/check-payments", methods=["POST"])
+@admin_required
+def manual_payment_check(current_user):
+    update_paid_status_for_bookings()
+    return jsonify({"status": "Payment statuses updated."})
