@@ -13,7 +13,6 @@
     flex-direction: column;
     background-color: #1e1e1e;
     border-radius: 12px;
-    box-shadow: 0 0px 10px rgb(0, 0, 0);
     overflow: hidden; /* Prevent outer overflow */
   }
   
@@ -47,7 +46,6 @@
     flex: 1;
     background-color: #1e1e1e;
     border-radius: 12px;
-    box-shadow: 0 0px 10px rgb(0, 0, 0);
     padding: 1rem;
     overflow: hidden; /* Prevent outer overflow */
     display: flex;
@@ -57,4 +55,45 @@
   .calendar-column > * {
     overflow-y: auto;
     flex: 1;
+  }
+
+  @media (max-width: 768px) {
+    .dashboard-grid {
+      flex-direction: column;
+      height: auto;
+      overflow: auto;
+      padding: 1rem;
+    }
+  
+    .session-lists {
+      flex: unset;
+      max-height: 60vh;
+      margin-bottom: 1rem;
+    }
+  
+    .session-split {
+      flex-direction: column;
+      height: 100%;
+    }
+  
+    .session-list-column {
+      max-height: 30vh;
+    }
+  
+    .booking-details {
+      border-left: none;
+      border-top: 1px solid #2c2c2c;
+      max-height: 30vh;
+    }
+  
+    .calendar-column {
+      flex: unset;
+      max-height: 40vh;
+      overflow-y: auto;
+    }
+  
+    .calendar-column > * {
+      flex: unset;
+      overflow-y: auto;
+    }
   }

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import "./Calendar.css";
 
 export default function Calendar({ onSlotClick }) {
   const [slots, setSlots] = useState([]);
@@ -33,16 +34,7 @@ export default function Calendar({ onSlotClick }) {
           <div key={slot.id}>
             <button
               onClick={() => onSlotClick(slot.start_time)}
-              style={{
-                marginBottom: "1rem",
-                width: "100%",
-                padding: "0.5rem",
-                background: "#2e2e2e",
-                color: "#fff",
-                border: "1px solid #444",
-                borderRadius: "6px",
-                cursor: "pointer",
-              }}
+              className="available-slot"
             >
               {new Date(slot.start_time).toLocaleString()}
             </button>

@@ -3,9 +3,7 @@
     text-align: center;
     padding: 2rem;                 /* Match other sections */
     background-color: #1e1e1e;
-    border-bottom: 1px solid #2c2c2c;
     border-radius: 20px;
-    box-shadow: 0 0 20px rgba(33, 33, 33, 0.8);
     margin: 2rem auto;             /* Match other sections */
     max-width: 800px;              /* Match other sections */
   }
@@ -46,7 +44,7 @@
     padding: 2rem;
     background-color: #1e1e1e;
     border-radius: 20px;
-    box-shadow: 0 0 20px rgba(33, 33, 33, 0.8);
+
     color: #e4e4e4;
   }
   

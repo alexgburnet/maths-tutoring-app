@@ -1,4 +1,5 @@
 import { useState } from "react";
+import "./BookingModal.css";
 
 export default function BookingModal({ slot, onClose, onSuccess }) {
   const [topic, setTopic] = useState("");
