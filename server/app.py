@@ -10,6 +10,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import uuid
 from flask_migrate import Migrate
 from monzo import MonzoClient
+from zoom import create_zoom_meeting
 
 # Load .env file
 load_dotenv()
@@ -82,6 +83,8 @@ class Booking(db.Model):
     payment_ref = db.Column(db.String(64), unique=True)
     is_paid = db.Column(db.Boolean, default=False)
 
+    zoom_link = db.Column(db.String(512))
+
     def to_dict(self):
         return {
             "id": self.id,
@@ -92,6 +95,7 @@ class Booking(db.Model):
             "user_name": self.user.name if self.user else None,
             "payment_ref": self.payment_ref,
             "is_paid": self.is_paid,
+            "zoom_link": self.zoom_link,
         }
     
 class AvailableSlot(db.Model):
@@ -204,8 +208,16 @@ def create_booking(current_user):
             payment_ref=payment_ref
         )
 
+        slot.booked = True
+
+        zoom_meeting = create_zoom_meeting(
+            student_name=data["student_name"],
+            start_time_iso=data["scheduled_time"]
+        )
+
+        booking.zoom_link = zoom_meeting["join_url"]
+
         db.session.add(booking)
-        slot.booked = True  # 👈 mark as booked
         db.session.commit()
 
         return jsonify(booking.to_dict()), 201
