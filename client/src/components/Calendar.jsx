@@ -14,6 +14,13 @@ export default function Calendar({ onSlotClick }) {
     };
 
     fetchSlots();
+
+    const handler = () => fetchSlots();
+    document.addEventListener("refresh-slots", handler);
+
+    return () => {
+        document.removeEventListener("refresh-slots", handler);
+    };
   }, []);
 
   return (

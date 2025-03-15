@@ -141,3 +141,20 @@ body {
     padding: 1rem;
     border-radius: 12px;
   }
+
+  .dashboard-grid {
+    display: flex;
+    gap: 2rem;
+    padding: 2rem;
+  }
+  
+  .session-lists {
+    overflow-y: auto;
+  }
+  
+  .booking-details {
+    background: #222;
+    border-radius: 12px;
+    padding: 1rem;
+    color: #fff;
+  }
