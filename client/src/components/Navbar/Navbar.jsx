@@ -1,9 +1,10 @@
+import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { getTokenFromCookie, clearTokenCookie } from "../../auth";
-import { isUserAdmin } from "../../auth";
+import { getTokenFromCookie, clearTokenCookie, isUserAdmin } from "../../auth";
 import "./Navbar.css";
 
 export default function Navbar({ loggedIn, setLoggedIn }) {
+  const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const onDashboard = location.pathname === "/dashboard";
@@ -14,6 +15,10 @@ export default function Navbar({ loggedIn, setLoggedIn }) {
     navigate("/");
   };
 
+  const toggleMenu = () => {
+    setMenuOpen((prev) => !prev);
+  };
+
   return (
     <nav className="navbar">
       <h1>
@@ -22,7 +27,13 @@ export default function Navbar({ loggedIn, setLoggedIn }) {
         </Link>
       </h1>
 
-      <div className="nav-links">
+      <div className="hamburger" onClick={toggleMenu}>
+        <div className={menuOpen ? "bar open" : "bar"}></div>
+        <div className={menuOpen ? "bar open" : "bar"}></div>
+        <div className={menuOpen ? "bar open" : "bar"}></div>
+      </div>
+
+      <div className={`nav-links ${menuOpen ? "open" : ""}`}>
         {!onDashboard && (
           <>
             <a href="#tutoring">Tutoring</a>
@@ -31,23 +42,12 @@ export default function Navbar({ loggedIn, setLoggedIn }) {
           </>
         )}
 
-        {loggedIn && isUserAdmin() && (
-          <Link to="/admin">Admin</Link>
-        )}
+        {loggedIn && isUserAdmin() && <Link to="/admin">Admin</Link>}
 
         {loggedIn ? (
           <>
             {!onDashboard && <Link to="/dashboard">Dashboard</Link>}
-            <button
-              onClick={handleLogout}
-              style={{
-                background: "none",
-                border: "none",
-                color: "#e4e4e4",
-                cursor: "pointer",
-                fontWeight: 500,
-              }}
-            >
+            <button onClick={handleLogout} className="logout-button">
               Logout
             </button>
           </>

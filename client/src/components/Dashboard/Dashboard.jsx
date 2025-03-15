@@ -44,12 +44,12 @@ export default function Dashboard({ onLogout }) {
   );
 
   return (
-    <div className="dashboard-grid">
-      {/* Left Column: Upcoming Sessions */}
-      <div
-        className="session-lists"
-        style={{ flex: selectedBooking ? 1 : 2 }}
-      >
+<div className="dashboard-grid">
+  {/* Left 2/3: Sessions container */}
+  <div className="session-lists">
+    <div className="session-split">
+      {/* Left: Session list */}
+      <div className="session-list-column">
         <h2>Upcoming Sessions</h2>
         {upcoming.map((b) => (
           <div key={b.id} onClick={() => setSelectedBooking(b)}>
@@ -71,22 +71,9 @@ export default function Dashboard({ onLogout }) {
         ))}
       </div>
 
-      {/* Middle Column: Selected Booking Details */}
+      {/* Right: Session detail */}
       {selectedBooking && (
-        <div
-          className="booking-details"
-          style={{
-            flex: 1,
-            paddingLeft: "2rem",
-            background: "#222",
-            color: "#fff",
-            borderRadius: "12px",
-            padding: "1.5rem",
-            display: "flex",
-            flexDirection: "column",
-            gap: "0.75rem",
-          }}
-        >
+        <div className="booking-details">
           <h3>Session Details</h3>
           <p><strong>Topic:</strong> {selectedBooking.topic}</p>
           <p><strong>Time:</strong> {new Date(selectedBooking.scheduled_time).toLocaleString()}</p>
@@ -106,25 +93,12 @@ export default function Dashboard({ onLogout }) {
             </p>
           )}
 
-          {/* Action Buttons */}
           <div style={{ marginTop: "1rem", display: "flex", gap: "1rem" }}>
-            <button
-              onClick={() => setSelectedBooking(null)}
-              style={{
-                padding: "0.5rem 1rem",
-                background: "#666",
-                border: "none",
-                borderRadius: "6px",
-                color: "#fff",
-                cursor: "pointer",
-              }}
-            >
-              Close
-            </button>
+            <button onClick={() => setSelectedBooking(null)}>Close</button>
 
             {new Date(selectedBooking.scheduled_time).getTime() > Date.now() && (
               <button
-              disabled={cancelLoading}
+                disabled={cancelLoading}
                 onClick={async () => {
                   setCancelLoading(true);
                   await fetch(`/api/bookings/${selectedBooking.id}`, {
@@ -135,14 +109,6 @@ export default function Dashboard({ onLogout }) {
                   fetchBookings();
                   setSelectedBooking(null);
                 }}
-                style={{
-                  padding: "0.5rem 1rem",
-                  background: "#e53935",
-                  border: "none",
-                  borderRadius: "6px",
-                  color: "#fff",
-                  cursor: "pointer",
-                }}
               >
                 {cancelLoading ? <span className="spinner" /> : "Cancel Booking"}
               </button>
@@ -150,28 +116,30 @@ export default function Dashboard({ onLogout }) {
           </div>
         </div>
       )}
-
-      {/* Right Column: Calendar */}
-      <div className="calendar-column" style={{ flex: 1.5 }}>
-        {showModal ? (
-          <BookingModal
-            slot={selectedSlot}
-            onClose={() => setShowModal(false)}
-            onSuccess={() => {
-              setShowModal(false);
-              fetchBookings();
-              document.dispatchEvent(new Event("refresh-slots"));
-            }}
-          />
-        ) : (
-          <Calendar
-            onSlotClick={(slot) => {
-              setSelectedSlot(slot);
-              setShowModal(true);
-            }}
-          />
-        )}
-      </div>
     </div>
+  </div>
+
+  {/* Right 1/3: Calendar */}
+  <div className="calendar-column">
+    {showModal ? (
+      <BookingModal
+        slot={selectedSlot}
+        onClose={() => setShowModal(false)}
+        onSuccess={() => {
+          setShowModal(false);
+          fetchBookings();
+          document.dispatchEvent(new Event("refresh-slots"));
+        }}
+      />
+    ) : (
+      <Calendar
+        onSlotClick={(slot) => {
+          setSelectedSlot(slot);
+          setShowModal(true);
+        }}
+      />
+    )}
+  </div>
+</div>
   );
 }

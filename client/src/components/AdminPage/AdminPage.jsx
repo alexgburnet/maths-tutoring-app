@@ -93,30 +93,31 @@ export default function AdminPage() {
   );
 
   return (
-    <div style={{ padding: "2rem" }}>
+    <div className="panel-container">
       <h2>Admin Panel: Manage Slots</h2>
 
-      <div style={{ marginBottom: "2rem" }}>
-        <label>
-          New Slot:
+      <div className="container">
+        <label className="input-label">
+          <h2 classname="new-slot-title">New Slot:</h2>
           <input
             type="datetime-local"
             value={startTime}
             onChange={(e) => setStartTime(e.target.value)}
-            style={{ marginLeft: "0.5rem" }}
+            className="input"
           />
         </label>
         <button
           onClick={handleAddSlot}
           disabled={loading || !startTime}
-          style={{ marginLeft: "1rem" }}
+          className="slot-button"
         >
           {loading ? "Adding..." : "Add Slot"}
         </button>
       </div>
 
+      <div className="container">
       <h3>Available Slots</h3>
-        <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "1rem" }}>
+        <table className="slot-table">
         <thead>
             <tr>
             <th>Date</th>
@@ -129,7 +130,7 @@ export default function AdminPage() {
             {slots.map((slot) => {
             const dt = new Date(slot.start_time);
             return (
-                <tr key={slot.id} style={{ borderBottom: "1px solid #444" }}>
+                <tr key={slot.id}>
                 <td>{dt.toLocaleDateString()}</td>
                 <td>{dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
                 <td>
@@ -173,8 +174,10 @@ export default function AdminPage() {
             })}
         </tbody>
         </table>
+      </div>
 
-        <h3 style={{ marginTop: "3rem" }}>Upcoming Booked Sessions</h3>
+      <div className="container">
+        <h3>Upcoming Booked Sessions</h3>
         <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "1rem" }}>
         <thead>
             <tr>
@@ -191,44 +194,33 @@ export default function AdminPage() {
             .map((b) => {
                 const dt = new Date(b.scheduled_time);
                 return (
-                <tr key={b.id} style={{ borderBottom: "1px solid #444" }}>
+                <tr key={b.id}>
                     <td>{dt.toLocaleDateString()}</td>
                     <td>{dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
                     <td>{b.user_name || b.student_name}</td>
                     <td>{b.topic}</td>
                     <td>
-                    <button
-                        onClick={() => handleCancelBooking(b.id)}
-                        style={{ cursor: "pointer" }}
-                    >
-                        ❌
-                    </button>
+                    <button onClick={() => handleCancelBooking(b.id)}>❌</button>
                     </td>
                 </tr>
                 );
             })}
         </tbody>
         </table>
+        </div>
 
-
-        <h3 style={{ marginTop: "3rem" }}>Previous Sessions</h3>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "3rem" }}>
+        <div className="container">
+        <h3>Previous Sessions</h3>
+        <div className="button-container">
             <h3>Previous Sessions</h3>
             <button
                 onClick={handleCheckPayments}
-                style={{
-                padding: "0.5rem 1rem",
-                background: "#4caf50",
-                border: "none",
-                borderRadius: "6px",
-                color: "#fff",
-                cursor: "pointer"
-                }}
+                className="refresh-button"
             >
                 🔄 Refresh Payment Statuses
             </button>
         </div>
-        <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "1rem" }}>
+        <table>
         <thead>
             <tr>
             <th>Date</th>
@@ -259,15 +251,7 @@ export default function AdminPage() {
                                 });
                                 fetchBookings(); // Refresh the list
                             }}
-                            style={{
-                                padding: "0.25rem 0.5rem",
-                                background: "#f39c12",
-                                color: "#fff",
-                                border: "none",
-                                borderRadius: "4px",
-                                cursor: "pointer",
-                                fontSize: "0.85rem"
-                            }}
+                            className="paid-button"
                             >
                             Mark as Paid
                             </button>
@@ -278,6 +262,7 @@ export default function AdminPage() {
             })}
         </tbody>
         </table>
+      </div>
     </div>
   );
 }

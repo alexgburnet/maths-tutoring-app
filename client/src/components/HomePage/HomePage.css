@@ -1,21 +1,29 @@
+/* HERO SECTION */
 .hero {
     text-align: center;
-    padding: 5rem 1rem 3rem;
+    padding: 2rem;                 /* Match other sections */
     background-color: #1e1e1e;
     border-bottom: 1px solid #2c2c2c;
-}
+    border-radius: 20px;
+    box-shadow: 0 0 20px rgba(33, 33, 33, 0.8);
+    margin: 2rem auto;             /* Match other sections */
+    max-width: 800px;              /* Match other sections */
+  }
   
-.hero h1 {
+  .hero h1 {
     font-size: 2.5rem;
     margin-bottom: 0.5rem;
-}
+    color: #e4e4e4;
+  }
   
-.hero p {
+  .hero p {
     font-size: 1.2rem;
     margin-bottom: 2rem;
-}
-
-.primary-btn {
+    color: #c0c0c0;
+  }
+  
+  /* CTA BUTTON */
+  .primary-btn {
     background-color: #4f83ff;
     color: white;
     font-weight: bold;
@@ -24,15 +32,66 @@
     border: none;
     cursor: pointer;
     font-size: 1rem;
-}
-
-
-.primary-btn:hover {
+    transition: background-color 0.2s ease-in-out;
+  }
+  
+  .primary-btn:hover {
     background-color: #3a6fe7;
-}
-
-section {
+  }
+  
+  /* SECTION STYLING */
+  section {
     max-width: 800px;
     margin: 2rem auto;
-    padding: 1rem;
-}
+    padding: 2rem;
+    background-color: #1e1e1e;
+    border-radius: 20px;
+    box-shadow: 0 0 20px rgba(33, 33, 33, 0.8);
+    color: #e4e4e4;
+  }
+  
+  /* SECTION HEADINGS */
+  section h2 {
+    font-size: 1.75rem;
+    margin-bottom: 1rem;
+    color: #4f83ff;
+  }
+  
+  section p {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: #c0c0c0;
+  }
+  
+  /* RESPONSIVE TYPOGRAPHY & LAYOUT */
+  @media (max-width: 768px) {
+    .hero {
+      padding: 3rem 1rem 2rem;
+    }
+  
+    .hero h1 {
+      font-size: 2rem;
+    }
+  
+    .hero p {
+      font-size: 1rem;
+    }
+  
+    .primary-btn {
+      font-size: 0.95rem;
+      padding: 0.6rem 1.2rem;
+    }
+  
+    section {
+      margin: 1rem;
+      padding: 1.5rem;
+    }
+  
+    section h2 {
+      font-size: 1.5rem;
+    }
+  
+    section p {
+      font-size: 0.95rem;
+    }
+  }

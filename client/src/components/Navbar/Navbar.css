@@ -2,36 +2,101 @@
     background-color: #1e1e1e;
     border-radius: 20px;
     margin: 10px;
-    padding: 1rem 2rem;
+    padding: 0 2rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
     border-bottom: 1px solid #2c2c2c;
-    box-shadow: 0 0px 20px rgb(47, 47, 77);
+    box-shadow: 0 0px 10px rgb(0, 0, 0);
     position: sticky;
     top: 0;
     z-index: 10;
-}
+    height: 72px;
+  }
   
-.navbar h1 {
+  /* Navbar title */
+  .navbar h1 {
     font-size: 1.5rem;
     font-weight: 600;
     color: #4f83ff;
     margin: 0;
-}
+  }
   
-.navbar .nav-links {
+  /* Hamburger icon - hidden on desktop */
+  .hamburger {
+    display: none;
+    flex-direction: column;
+    gap: 5px;
+    cursor: pointer;
+    z-index: 20; /* Make sure it's above the dropdown */
+  }
+  
+  .hamburger .bar {
+    width: 25px;
+    height: 3px;
+    background-color: #e4e4e4;
+    transition: all 0.3s ease;
+  }
+  
+  /* Navigation links - default desktop */
+  .nav-links {
     display: flex;
     gap: 1.2rem;
-}
+    align-items: center;
+  }
   
-.navbar a {
+  /* Common link styling */
+  .navbar a {
     text-decoration: none;
     color: #e4e4e4;
     font-weight: 500;
-}
+  }
   
-.navbar a:hover {
+  .navbar a:hover,
+  .logout-button:hover {
     color: #4f83ff;
     transition: color 0.2s ease-in-out;
-}
+  }
+  
+  /* Logout button */
+  .logout-button {
+    background: none;
+    border: none;
+    color: #e4e4e4;
+    cursor: pointer;
+    font-weight: 500;
+    padding: 0;
+    font-family: inherit;
+    font-size: 1rem;
+    margin-top: 0;
+  }
+  
+  /* MOBILE STYLES */
+  @media (max-width: 768px) {
+    .hamburger {
+      display: flex;
+    }
+  
+    .nav-links {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      left: 0;
+      background-color: #1e1e1e;
+      flex-direction: column;
+      align-items: flex-start;
+      padding: 1rem 2rem;
+      display: none;
+      border-radius: 0 0 20px 20px;
+    }
+  
+    .nav-links.open {
+      display: flex;
+    }
+  
+    .nav-links a,
+    .nav-links .logout-button {
+      padding: 0.5rem 0;
+      width: 100%;
+    }
+  }

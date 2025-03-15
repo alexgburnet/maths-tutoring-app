@@ -1,3 +1,5 @@
+import './BookingCard.css';
+
 export default function BookingCard({ booking, isSelected }) {
     const { topic, scheduled_time, is_paid } = booking;
   
