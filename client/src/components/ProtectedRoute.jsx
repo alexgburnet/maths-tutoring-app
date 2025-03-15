@@ -1,8 +1,12 @@
 import { Navigate } from "react-router-dom";
-import { getTokenFromCookie } from "../auth";
+import { getTokenFromCookie, isTokenValid } from "../auth";
 
 export default function ProtectedRoute({ children }) {
   const token = getTokenFromCookie();
 
-  return token ? children : <Navigate to="/auth" replace />;
+  if (!token || !isTokenValid(token)) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  return children;
 }

@@ -4,6 +4,9 @@ import AuthForm from "./components/AuthForm";
 import Dashboard from "./components/Dashboard";
 import HomePage from "./components/HomePage";
 import Navbar from "./components/Navbar";
+import NotFound from "./components/NotFound";
+import AdminRoute from "./components/AdminRoute";
+import AdminPage from "./components/AdminPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { getTokenFromCookie } from "./auth";
 
@@ -31,6 +34,15 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/admin"
+            element={
+              <AdminRoute>
+                <AdminPage />
+              </AdminRoute>
+            }
+          />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </Router>
     );
