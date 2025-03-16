@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import desc
 from flask_cors import CORS
 from dotenv import load_dotenv
 import os
@@ -261,7 +262,7 @@ def get_available_slots(current_user):
 @app.route("/api/bookings", methods=["GET"])
 @token_required
 def get_all_bookings(current_user):
-    bookings = Booking.query.filter_by(user_id=current_user.id).all()
+    bookings = Booking.query.filter_by(user_id=current_user.id).order_by(desc(Booking.scheduled_time)).all()
     print(f"User {current_user.email} requested their bookings")
     return jsonify([b.to_dict() for b in bookings])
 
