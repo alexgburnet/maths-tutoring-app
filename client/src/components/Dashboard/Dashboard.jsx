@@ -6,6 +6,7 @@ import "./Dashboard.css";
 
 export default function Dashboard({ onLogout }) {
   const [cancelLoading, setCancelLoading] = useState(false);
+  const [refreshLoading, setRefreshLoading] = useState(false);
   const [bookings, setBookings] = useState([]);
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [showModal, setShowModal] = useState(false);
@@ -32,6 +33,25 @@ export default function Dashboard({ onLogout }) {
     });
     const data = await res.json();
     setBookings(data);
+  };
+
+  const refreshPayment = async (id) => {
+    setRefreshLoading(true);
+    try {
+      const res = await fetch(`/api/bookings/${id}/check_payment`, {
+        method: "POST",
+        headers: { Authorization: token },
+      });
+  
+      const data = await res.json();
+      alert(data.message);
+      fetchBookings(); // update the UI
+    } catch (err) {
+      alert("Failed to check payment status.");
+      console.error("Payment check error:", err);
+    } finally {
+      setRefreshLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -131,6 +151,14 @@ export default function Dashboard({ onLogout }) {
                     {cancelLoading ? <span className="spinner" /> : "Cancel Booking"}
                   </button>
                 )}
+                {!selectedBooking.is_paid && (
+                  <button
+                    onClick={() => refreshPayment(selectedBooking.id)}
+                    disabled={refreshLoading}
+                  >
+                    {refreshLoading ? <span className="spinner" /> : "🔄 Refresh Payment Status"}
+                  </button>
+                )}
               </div>
             </>
           )}
@@ -160,7 +188,33 @@ export default function Dashboard({ onLogout }) {
             </p>
           )}
 
-          <div style={{ marginTop: "1rem", display: "flex", gap: "1rem", justifyContent: "flex-end" }}>
+          <div style={{ marginTop: "1rem", display: "flex", flexDirection: "column", gap: "0.5rem", justifyContent: "flex-end" }}>
+            
+            {!selectedBooking.is_paid && (
+              <button
+                onClick={() => refreshPayment(selectedBooking.id)}
+                disabled={refreshLoading}
+              >
+                {refreshLoading ? <span className="spinner" /> : "🔄 Refresh Payment Status"}
+              </button>
+            )}
+            {new Date(selectedBooking.scheduled_time).getTime() > Date.now() && (
+                  <button
+                    disabled={cancelLoading}
+                    onClick={async () => {
+                      setCancelLoading(true);
+                      await fetch(`/api/bookings/${selectedBooking.id}`, {
+                        method: "DELETE",
+                        headers: { Authorization: token },
+                      });
+                      setCancelLoading(false);
+                      fetchBookings();
+                      setSelectedBooking(null);
+                    }}
+                  >
+                    {cancelLoading ? <span className="spinner" /> : "Cancel Booking"}
+                  </button>
+                )}
             <button onClick={() => setSelectedBooking(null)}>Close</button>
           </div>
         </div>

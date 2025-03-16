@@ -47,7 +47,8 @@ def update_paid_status_for_bookings():
             continue
 
         matches = monzo.get_transactions_by_reference(booking.payment_ref)
-        if matches:
+        # check transaction amount to be £20
+        if matches and matches[0]["amount"] >= 2000:
             booking.is_paid = True
             print(f"[✓] Marked booking {booking.id} as paid.")
     
@@ -365,3 +366,34 @@ def mark_booking_paid(current_user, booking_id):
     booking.is_paid = True
     db.session.commit()
     return jsonify({"status": "Booking marked as paid"})
+
+@app.route("/api/bookings/<int:booking_id>/check_payment", methods=["POST"])
+@token_required
+def check_payment_status(current_user, booking_id):
+    print(f"🔍 Received request to check payment for booking ID {booking_id}")
+    
+    try:
+        booking = Booking.query.get_or_404(booking_id)
+
+        if booking.is_paid:
+            return jsonify({"message": "Already paid", "paid": True})
+
+        monzo = MonzoClient()
+        transactions = monzo.get_transactions_by_reference(booking.payment_ref)
+
+        if transactions and transactions[0]["amount"] >= 2000:
+            booking.is_paid = True
+            db.session.commit()
+            return jsonify({"message": "Payment found and marked as paid", "paid": True})
+        else:
+            return jsonify({"message": "Payment not found", "paid": False})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+
+@app.route("/callback")
+def oauth_callback():
+    code = request.args.get("code")
+    print(f"🔐 Received authorization code: {code}")
+    return "✅ Authorization code received. You can now close this tab."
