@@ -320,34 +320,53 @@ def delete_slot(current_user, slot_id):
     db.session.commit()
     return jsonify({"message": "Slot deleted"})
 
+from datetime import datetime
+
+
+from datetime import datetime
+from uuid import uuid4
+
 @app.route("/api/admin/assign-slot", methods=["POST"])
 @admin_required
-def assign_slot(current_user):
+def assign_user_to_slot(current_user):
     data = request.json
-    slot = AvailableSlot.query.get_or_404(data["slot_id"])
-    user = User.query.get_or_404(data["user_id"])
+    slot_id = data.get("slot_id")
+    user_id = data.get("user_id")
+    topic = data.get("topic", "General")
+
+    user = User.query.get_or_404(user_id)
+    slot = AvailableSlot.query.get_or_404(slot_id)
 
     if slot.booked:
         return jsonify({"error": "Slot already booked"}), 400
-    
-    student_name = user.email.split("@")[0] if not hasattr(user, "name") else user.name
 
-    try:
-        zoom_meeting = create_zoom_meeting(user.name, user.surname, user.email, slot.start_time.isoformat())
-    except Exception as e:
-        return jsonify({"error": f"Failed to create Zoom meeting: {str(e)}"}), 500
+    payment_ref = str(uuid4())[:8]
 
     booking = Booking(
         student_name=user.name,
-        topic=data.get("topic", "Admin-assigned"),
+        topic=topic,
         scheduled_time=slot.start_time,
         user_id=user.id,
         slot_id=slot.id,
-        zoom_link=zoom_meeting["join_url"],
-        zoom_meeting_id=zoom_meeting["id"]
+        payment_ref=payment_ref
     )
 
     slot.booked = True
+
+    # 🕒 Only create Zoom meeting if session is in the future
+    if slot.start_time > datetime.utcnow():
+        try:
+            zoom_meeting = create_zoom_meeting(
+                student_name=user.name,
+                student_surname=user.surname,
+                student_email=user.email,
+                start_time_iso=slot.start_time.isoformat()
+            )
+            booking.zoom_link = zoom_meeting["join_url"]
+            booking.zoom_meeting_id = zoom_meeting["id"]
+        except Exception as e:
+            print(f"⚠️ Zoom creation failed: {e}")
+
     db.session.add(booking)
     db.session.commit()
 
