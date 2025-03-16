@@ -57,34 +57,39 @@ export default function Dashboard({ onLogout }) {
 
   const downloadNotes = async (url) => {
     setDownloadLoading(true);
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        Authorization: token
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: token,
+        },
+      });
+  
+      if (!response.ok) {
+        alert("❌ Failed to download notes.");
+        return;
       }
-    });
   
-    if (!response.ok) {
-      alert("❌ Failed to download notes.");
-      return;
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+  
+      const contentDisposition = response.headers.get("Content-Disposition");
+      const match = contentDisposition?.match(/filename="(.+)"/);
+      const filename = match ? match[1] : "notes.pdf";
+  
+      link.href = downloadUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error("Download error:", error);
+      alert("Something went wrong while downloading.");
+    } finally {
+      setDownloadLoading(false); // ✅ Moved here
     }
-  
-    const blob = await response.blob();
-    const downloadUrl = window.URL.createObjectURL(blob);
-    const link = document.createElement("a");
-  
-    const contentDisposition = response.headers.get("Content-Disposition");
-    const match = contentDisposition?.match(/filename="(.+)"/);
-    const filename = match ? match[1] : "notes.pdf";
-  
-    link.href = downloadUrl;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   };
-
-  setDownloadLoading(false);
 
   useEffect(() => {
     fetchBookings();
