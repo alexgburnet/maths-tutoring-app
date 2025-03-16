@@ -273,6 +273,7 @@ export default function AdminPage() {
             <th>Student</th>
             <th>Paid</th>
             <th>Upload Notes</th>
+            <th>Delete Notes</th>
             </tr>
         </thead>
         <tbody>
@@ -339,6 +340,30 @@ export default function AdminPage() {
                             Upload
                           </button>
                         </>
+                      )}
+                    </td>
+                    <td>
+                      {b.notes_url ? (
+                        <button
+                          onClick={async () => {
+                            if (confirm("Are you sure you want to delete this notes file?")) {
+                              const res = await fetch(`/api/admin/delete-notes/${b.id}`, {
+                                method: "DELETE",
+                                headers: { Authorization: token },
+                              });
+                              if (res.ok) {
+                                alert("✅ Notes deleted");
+                                fetchBookings();
+                              } else {
+                                alert("❌ Failed to delete notes");
+                              }
+                            }
+                          }}
+                        >
+                          🗑️ Delete
+                        </button>
+                      ) : (
+                        "-"
                       )}
                     </td>
                 </tr>

@@ -459,3 +459,20 @@ def upload_notes(current_user, booking_id):
 @token_required
 def serve_notes_file(current_user, filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+@app.route("/api/admin/delete-notes/<int:booking_id>", methods=["DELETE"])
+@admin_required
+def delete_notes(current_user, booking_id):
+    booking = Booking.query.get_or_404(booking_id)
+    if not booking.notes_filename:
+        return jsonify({"error": "No notes to delete"}), 400
+
+    file_path = os.path.join(app.config["UPLOAD_FOLDER"], booking.notes_filename)
+    try:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        booking.notes_filename = None
+        db.session.commit()
+        return jsonify({"message": "Notes deleted"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

@@ -1,2 +1,3 @@
 .env
 web-Host_key.pem
+server/uploads/
