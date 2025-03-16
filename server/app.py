@@ -165,6 +165,7 @@ def register():
     payload = {
         "user_id": user.id,
         "is_admin": user.is_admin,
+        "name": user.name,
         "exp": datetime.utcnow() + timedelta(hours=2)
     }
     token = pyjwt.encode(payload, SECRET_KEY, algorithm="HS256")
@@ -181,6 +182,7 @@ def login():
     payload = {
         "user_id": user.id,
         "is_admin": user.is_admin,
+        "name": user.name,
         "exp": datetime.utcnow() + timedelta(hours=2)
     }
     token = pyjwt.encode(payload, SECRET_KEY, algorithm="HS256")
@@ -214,6 +216,7 @@ def create_booking(current_user):
 
         zoom_meeting = create_zoom_meeting(
             student_name=data["student_name"],
+            student_email=current_user.email,
             start_time_iso=data["scheduled_time"]
         )
 
@@ -324,12 +327,12 @@ def assign_slot(current_user):
     student_name = user.email.split("@")[0] if not hasattr(user, "name") else user.name
 
     try:
-        zoom_meeting = create_zoom_meeting(student_name, slot.start_time.isoformat())
+        zoom_meeting = create_zoom_meeting(user.name, user.email, slot.start_time.isoformat())
     except Exception as e:
         return jsonify({"error": f"Failed to create Zoom meeting: {str(e)}"}), 500
 
     booking = Booking(
-        student_name=user.email.split("@")[0],  # or you can use user.name if stored
+        student_name=user.name,
         topic=data.get("topic", "Admin-assigned"),
         scheduled_time=slot.start_time,
         user_id=user.id,

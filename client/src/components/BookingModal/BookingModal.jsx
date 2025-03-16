@@ -15,7 +15,6 @@ export default function BookingModal({ slot, onClose, onSuccess }) {
         Authorization: token,
       },
       body: JSON.stringify({
-        student_name: "You",
         topic,
         scheduled_time: slot,
       }),

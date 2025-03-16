@@ -31,7 +31,30 @@ def get_zoom_access_token():
     
     return response.json()["access_token"]
 
-def create_zoom_meeting(student_name, start_time_iso):
+def add_zoom_registrant(meeting_id, email, first_name):
+    access_token = get_zoom_access_token()
+    url = f"https://api.zoom.us/v2/meetings/{meeting_id}/registrants"
+
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "email": email,
+        "first_name": first_name
+    }
+
+    response = requests.post(url, headers=headers, json=payload)
+
+    if response.status_code != 201:
+        raise Exception(f"Failed to add Zoom registrant: {response.text}")
+    
+    zoom_data = response.json()
+    return zoom_data["join_url"]
+
+
+def create_zoom_meeting(student_name, student_email, start_time_iso):
     access_token = get_zoom_access_token()
 
     url = "https://api.zoom.us/v2/users/me/meetings"
@@ -53,6 +76,7 @@ def create_zoom_meeting(student_name, start_time_iso):
         "settings": {
             "join_before_host": False,
             "approval_type": 0,
+            "registration_type": 1,
             "waiting_room": True
         }
     }
@@ -64,8 +88,12 @@ def create_zoom_meeting(student_name, start_time_iso):
 
     zoom_data = response.json()
 
+    print("Created zoom meeting", zoom_data["id"])
+
+    unique_url = add_zoom_registrant(zoom_data["id"], student_email, student_name)
+
     return {
-        "join_url": zoom_data["join_url"],
+        "join_url": unique_url,
         "id": str(zoom_data["id"])
     }
 
