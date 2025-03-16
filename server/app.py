@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import desc
 from flask_cors import CORS
@@ -12,6 +12,7 @@ import uuid
 from flask_migrate import Migrate
 from monzo import MonzoClient
 from zoom import create_zoom_meeting, delete_zoom_meeting
+from werkzeug.utils import secure_filename
 
 # Load .env file
 load_dotenv()
@@ -38,6 +39,14 @@ db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
 SECRET_KEY = os.getenv("SECRET_KEY", "devsecret")
+
+UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads', 'notes')
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+ALLOWED_EXTENSIONS = {'pdf'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def update_paid_status_for_bookings():
     monzo = MonzoClient()
@@ -89,7 +98,7 @@ class Booking(db.Model):
     zoom_link = db.Column(db.String(512))
     zoom_meeting_id = db.Column(db.String(128))
 
-    notes_path = db.Column(db.String(255), nullable=True)
+    notes_filename = db.Column(db.String(255), nullable=True)
 
     def to_dict(self):
         return {
@@ -103,7 +112,7 @@ class Booking(db.Model):
             "is_paid": self.is_paid,
             "zoom_link": self.zoom_link,
             "zoom_meeting_id": self.zoom_meeting_id,
-            "notes_path": self.notes_path,
+            "notes_url": f"http://localhost:5000/uploads/notes/{self.notes_filename}" if self.notes_filename else None,
         }
     
 class AvailableSlot(db.Model):
@@ -420,3 +429,33 @@ def oauth_callback():
     code = request.args.get("code")
     print(f"🔐 Received authorization code: {code}")
     return "✅ Authorization code received. You can now close this tab."
+
+@app.route("/api/admin/upload-notes/<int:booking_id>", methods=["POST"])
+@admin_required
+def upload_notes(current_user, booking_id):
+    booking = Booking.query.get_or_404(booking_id)
+    if "notes" not in request.files:
+        return jsonify({"error": "No file part"}), 400
+
+    file = request.files["notes"]
+    if file.filename == "":
+        return jsonify({"error": "No selected file"}), 400
+
+    ext = os.path.splitext(file.filename)[1]
+    unique_id = uuid.uuid4().hex[:8]
+    filename = secure_filename(f"{booking_id}_{unique_id}{ext}")
+    file_path = os.path.join(UPLOAD_FOLDER, filename)
+    
+    # Save the file
+    file.save(file_path)
+
+    # Save filename/path in DB
+    booking.notes_filename = filename
+    db.session.commit()
+
+    return jsonify({"message": "Notes uploaded successfully"})
+
+@app.route("/uploads/notes/<filename>")
+@token_required
+def serve_notes_file(current_user, filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)

@@ -9,6 +9,7 @@ export default function AdminPage() {
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [users, setUsers] = useState([]);
   const [assigningSlotId, setAssigningSlotId] = useState(null);
+  const [notesFiles, setNotesFiles] = useState({});
 
   const token = document.cookie
     .split("; ")
@@ -85,6 +86,42 @@ export default function AdminPage() {
     setPaymentLoading(false);
   };
 
+  const downloadNotes = async (url) => {
+    const token = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("token="))
+      ?.split("=")[1];
+  
+    if (!token) return alert("Not logged in.");
+  
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        Authorization: token
+      }
+    });
+  
+    if (!response.ok) {
+      alert("Failed to download notes.");
+      return;
+    }
+  
+    const blob = await response.blob();
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+  
+    // Optional: parse filename from header or fallback
+    const contentDisposition = response.headers.get("Content-Disposition");
+    const match = contentDisposition?.match(/filename="(.+)"/);
+    const filename = match ? match[1] : "notes.pdf";
+  
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   useEffect(() => {
     fetchSlots();
     fetchBookings();
@@ -119,63 +156,63 @@ export default function AdminPage() {
       </div>
 
       <div className="container">
-      <h3>Available Slots</h3>
+        <h3>Available Slots</h3>
         <table className="slot-table">
-        <thead>
+          <thead>
             <tr>
-            <th>Date</th>
-            <th>Time</th>
-            <th>Cancel</th>
-            <th>Assign</th>
+              <th>Date</th>
+              <th>Time</th>
+              <th>Cancel</th>
+              <th>Assign</th>
             </tr>
-        </thead>
-        <tbody>
+          </thead>
+          <tbody>
             {slots.map((slot) => {
-            const dt = new Date(slot.start_time);
-            return (
-                <tr key={slot.id}>
-                <td>{dt.toLocaleDateString()}</td>
-                <td>{dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
-                <td>
+              const dt = new Date(slot.start_time);
+              return (
+                <tr key={slot.id} style={{ borderBottom: "1px solid #444" }}>
+                  <td>{dt.toLocaleDateString()}</td>
+                  <td>{dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
+                  <td>
                     {!slot.booked && (
-                    <button onClick={() => handleDeleteSlot(slot.id)}>❌</button>
+                      <button onClick={() => handleDeleteSlot(slot.id)}>❌</button>
                     )}
-                </td>
-                <td>
+                  </td>
+                  <td>
                     {!slot.booked && assigningSlotId === slot.id ? (
-                    <select
+                      <select
                         onChange={async (e) => {
-                        const userId = e.target.value;
-                        await fetch("/api/admin/assign-slot", {
+                          const userId = e.target.value;
+                          await fetch("/api/admin/assign-slot", {
                             method: "POST",
                             headers: {
-                            "Content-Type": "application/json",
-                            Authorization: token,
+                              "Content-Type": "application/json",
+                              Authorization: token,
                             },
                             body: JSON.stringify({ user_id: userId, slot_id: slot.id }),
-                        });
-                        setAssigningSlotId(null);
-                        fetchSlots();
-                        fetchBookings();
+                          });
+                          setAssigningSlotId(null);
+                          fetchSlots();
+                          fetchBookings();
                         }}
-                    >
+                      >
                         <option value="">Select User</option>
                         {users.map((u) => (
-                        <option key={u.id} value={u.id}>
+                          <option key={u.id} value={u.id}>
                             {u.email}
-                        </option>
+                          </option>
                         ))}
-                    </select>
+                      </select>
                     ) : (
-                    !slot.booked && (
+                      !slot.booked && (
                         <button onClick={() => setAssigningSlotId(slot.id)}>Assign</button>
-                    )
+                      )
                     )}
-                </td>
+                  </td>
                 </tr>
-            );
+              );
             })}
-        </tbody>
+          </tbody>
         </table>
       </div>
 
@@ -235,6 +272,7 @@ export default function AdminPage() {
             <th>Time</th>
             <th>Student</th>
             <th>Paid</th>
+            <th>Upload Notes</th>
             </tr>
         </thead>
         <tbody>
@@ -264,6 +302,44 @@ export default function AdminPage() {
                             Mark as Paid
                             </button>
                         )}
+                    </td>
+                    <td>
+                      {b.notes_url ? (
+                        <button onClick={() => downloadNotes(b.notes_url)}>📥 Download Notes</button>
+                      ) : (
+                        <>
+                          <input
+                            type="file"
+                            accept="application/pdf"
+                            onChange={(e) =>
+                              setNotesFiles({ ...notesFiles, [b.id]: e.target.files[0] })
+                            }
+                          />
+                          <button
+                            onClick={async () => {
+                              const file = notesFiles[b.id];
+                              if (!file) return alert("Please select a file first.");
+                              const formData = new FormData();
+                              formData.append("notes", file);
+
+                              const res = await fetch(`/api/admin/upload-notes/${b.id}`, {
+                                method: "POST",
+                                headers: { Authorization: token },
+                                body: formData,
+                              });
+
+                              if (res.ok) {
+                                alert("✅ Notes uploaded!");
+                                fetchBookings();
+                              } else {
+                                alert("❌ Failed to upload notes");
+                              }
+                            }}
+                          >
+                            Upload
+                          </button>
+                        </>
+                      )}
                     </td>
                 </tr>
                 );
