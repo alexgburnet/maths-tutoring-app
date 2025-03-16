@@ -17,7 +17,7 @@ services:
     container_name: tutoring-backend
     restart: always
     volumes:
-      - ./server:/app
+      - uploads_data:/app/uploads/notes  # ✅ mount uploads directory
     environment:
       FLASK_APP: app.py
       FLASK_ENV: production
@@ -33,7 +33,7 @@ services:
     restart: always
     depends_on:
       - backend
-  
+
   caddy:
     image: caddy:latest
     restart: always
@@ -52,3 +52,4 @@ volumes:
   caddy_data:
   caddy_config:
   pgdata:
+  uploads_data:  # ✅ this is the named volume for notes
