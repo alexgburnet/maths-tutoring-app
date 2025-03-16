@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, send_file
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import desc
 from flask_cors import CORS
@@ -455,10 +455,10 @@ def upload_notes(current_user, booking_id):
 
     return jsonify({"message": "Notes uploaded successfully"})
 
-@app.route("/uploads/notes/<filename>")
-@token_required
-def serve_notes_file(current_user, filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+@app.route("/uploads/notes/<path:filename>")
+def serve_notes_file(filename):
+    file_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+    return send_file(file_path, mimetype="application/pdf")
 
 @app.route("/api/admin/delete-notes/<int:booking_id>", methods=["DELETE"])
 @admin_required
