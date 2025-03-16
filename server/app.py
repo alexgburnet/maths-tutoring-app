@@ -112,7 +112,7 @@ class Booking(db.Model):
             "is_paid": self.is_paid,
             "zoom_link": self.zoom_link,
             "zoom_meeting_id": self.zoom_meeting_id,
-            "notes_url": f"http://tutoring.alexbur.net/uploads/notes/{self.notes_filename}" if self.notes_filename else None,
+            "notes_url": f"https://tutoring.alexbur.net/uploads/notes/{self.notes_filename}" if self.notes_filename else None,
         }
     
 class AvailableSlot(db.Model):
