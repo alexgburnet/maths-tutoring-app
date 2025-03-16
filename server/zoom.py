@@ -49,7 +49,7 @@ def add_zoom_registrant(meeting_id, email, first_name):
     response = requests.post(url, headers=headers, json=payload)
 
     if response.status_code != 201:
-        raise Exception(f"Failed to add Zoom registrant: {response.text}")
+        return None
     
     zoom_data = response.json()
     return zoom_data["join_url"]
@@ -94,7 +94,7 @@ def create_zoom_meeting(student_name, student_email, start_time_iso):
     unique_url = add_zoom_registrant(zoom_data["id"], student_email, student_name)
 
     return {
-        "join_url": unique_url,
+        "join_url": (unique_url if unique_url else zoom_data["join_url"]),
         "id": str(zoom_data["id"])
     }
 
