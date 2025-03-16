@@ -42,7 +42,8 @@ def add_zoom_registrant(meeting_id, email, first_name):
 
     payload = {
         "email": email,
-        "first_name": first_name
+        "first_name": first_name,
+        "last_name": "Student",
     }
 
     response = requests.post(url, headers=headers, json=payload)

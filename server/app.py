@@ -204,7 +204,7 @@ def create_booking(current_user):
         payment_ref = str(uuid.uuid4())[:8]  # Short, unique, user-safe
 
         booking = Booking(
-            student_name=data["student_name"],
+            student_name=current_user.name,
             topic=data["topic"],
             scheduled_time=scheduled_time,
             user_id=current_user.id,
@@ -215,7 +215,7 @@ def create_booking(current_user):
         slot.booked = True
 
         zoom_meeting = create_zoom_meeting(
-            student_name=data["student_name"],
+            student_name=current_user.name,
             student_email=current_user.email,
             start_time_iso=data["scheduled_time"]
         )

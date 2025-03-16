@@ -19,11 +19,17 @@ export default function BookingModal({ slot, onClose, onSuccess }) {
         scheduled_time: slot,
       }),
     });
-
+  
     setLoading(false);
-
-    if (res.ok) onSuccess();
-    else alert("Booking failed.");
+  
+    const data = await res.json();
+  
+    if (res.ok) {
+      onSuccess();
+    } else {
+      console.error("Booking error:", data.error);
+      alert(data.error || "Booking failed.");
+    }
   };
 
   return (
