@@ -455,10 +455,20 @@ def upload_notes(current_user, booking_id):
 
     return jsonify({"message": "Notes uploaded successfully"})
 
-@app.route("/uploads/notes/<path:filename>")
-def serve_notes_file(filename):
-    file_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-    return send_file(file_path, mimetype="application/pdf")
+@app.route("/uploads/notes/<filename>")
+@token_required  # Optional if you want auth
+def serve_notes_file(current_user, filename):
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
+    if not os.path.exists(file_path):
+        return jsonify({"error": "File not found"}), 404
+
+    return send_file(
+        file_path,
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name=filename
+    )
 
 @app.route("/api/admin/delete-notes/<int:booking_id>", methods=["DELETE"])
 @admin_required
