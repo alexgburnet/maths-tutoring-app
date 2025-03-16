@@ -12,6 +12,7 @@ export default function Dashboard({ onLogout }) {
   const [showModal, setShowModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [downloadLoading, setDownloadLoading] = useState(false);
 
   useEffect(() => {
     const handleResize = () => {
@@ -55,6 +56,7 @@ export default function Dashboard({ onLogout }) {
   };
 
   const downloadNotes = async (url) => {
+    setDownloadLoading(true);
     const response = await fetch(url, {
       method: "GET",
       headers: {
@@ -81,6 +83,8 @@ export default function Dashboard({ onLogout }) {
     link.click();
     document.body.removeChild(link);
   };
+
+  setDownloadLoading(false);
 
   useEffect(() => {
     fetchBookings();
@@ -188,8 +192,8 @@ export default function Dashboard({ onLogout }) {
                   </button>
                 )}
                 {selectedBooking.notes_url && (
-                  <button onClick={() => downloadNotes(selectedBooking.notes_url)}>
-                    📥 Download Notes
+                  <button onClick={() => downloadNotes(selectedBooking.notes_url)} disabled={downloadLoading}>
+                    {downloadLoading ? <span className="spinner" /> : "📥 Download Notes"}
                   </button>
                 )}
               </div>
@@ -249,8 +253,8 @@ export default function Dashboard({ onLogout }) {
                   </button>
                 )}
                 {selectedBooking.notes_url && (
-                  <button onClick={() => downloadNotes(selectedBooking.notes_url)}>
-                    📥 Download Notes
+                  <button onClick={() => downloadNotes(selectedBooking.notes_url)} disabled={downloadLoading}>
+                    {downloadLoading ? <span className="spinner" /> : "📥 Download Notes"}
                   </button>
                 )}
             <button onClick={() => setSelectedBooking(null)}>Close</button>
