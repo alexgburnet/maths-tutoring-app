@@ -5,7 +5,8 @@ import "./AuthForm.css";
 
 export default function AuthForm({ onAuth }) {
   const [isLogin, setIsLogin] = useState(true);
-  const [name, setName] = useState(""); // 👈 Add name state
+  const [name, setName] = useState("");
+  const [surname, setSurname] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -14,11 +15,17 @@ export default function AuthForm({ onAuth }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-
+  
+    // Check required fields during registration
+    if (!isLogin && (!name || !surname || !email || !password)) {
+      setError("Please fill in all fields.");
+      return;
+    }
+  
     const res = isLogin
       ? await login(email, password)
-      : await register(name, email, password); // 👈 Pass name too
-
+      : await register(name, surname, email, password);
+  
     if (res.token) {
       document.cookie = `token=${res.token}; path=/; max-age=7200`;
       onAuth();
@@ -40,6 +47,16 @@ export default function AuthForm({ onAuth }) {
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
+          />
+        )}
+
+        {!isLogin && (
+          <input
+            type="text"
+            placeholder="Your Surname"
+            required
+            value={surname}
+            onChange={(e) => setSurname(e.target.value)}
           />
         )}
 
