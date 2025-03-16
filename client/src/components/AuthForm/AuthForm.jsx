@@ -51,13 +51,19 @@ export default function AuthForm({ onAuth }) {
         )}
 
         {!isLogin && (
-          <input
-            type="text"
-            placeholder="Your Surname"
-            required
-            value={surname}
-            onChange={(e) => setSurname(e.target.value)}
-          />
+          <>
+            <input
+              type="text"
+              placeholder="Your Surname"
+              required
+              value={surname}
+              onChange={(e) => setSurname(e.target.value)}
+            />
+          </>
+        )}
+
+        {!isLogin && (
+          <p className="email-prompt">Please use the email you wish to use with Zoom</p>
         )}
 
         <input

@@ -20,7 +20,7 @@ button {
     border: none;
     cursor: pointer;
 }
-  
+
 button:hover {
     background-color: #3a6fe7;
 }
@@ -32,4 +32,9 @@ button:hover {
     background: #1e1e1e;
     border-radius: 12px;
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.6);
+}
+
+.email-prompt {
+    margin-bottom: 0;
+    margin-top: 2rem;
 }
