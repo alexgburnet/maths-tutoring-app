@@ -79,3 +79,8 @@ tr {
 td button {
     max-width: 100px;
 }
+
+.notes-upload-input {
+    width: 250px;
+    margin-right: 1rem;
+}

@@ -311,6 +311,7 @@ export default function AdminPage() {
                         <>
                           <input
                             type="file"
+                            className="notes-upload-input"
                             accept="application/pdf"
                             onChange={(e) =>
                               setNotesFiles({ ...notesFiles, [b.id]: e.target.files[0] })
