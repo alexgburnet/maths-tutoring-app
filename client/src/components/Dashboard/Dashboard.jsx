@@ -54,6 +54,34 @@ export default function Dashboard({ onLogout }) {
     }
   };
 
+  const downloadNotes = async (url) => {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        Authorization: token
+      }
+    });
+  
+    if (!response.ok) {
+      alert("❌ Failed to download notes.");
+      return;
+    }
+  
+    const blob = await response.blob();
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+  
+    const contentDisposition = response.headers.get("Content-Disposition");
+    const match = contentDisposition?.match(/filename="(.+)"/);
+    const filename = match ? match[1] : "notes.pdf";
+  
+    link.href = downloadUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   useEffect(() => {
     fetchBookings();
   }, []);
@@ -159,6 +187,11 @@ export default function Dashboard({ onLogout }) {
                     {refreshLoading ? <span className="spinner" /> : "🔄 Refresh Payment Status"}
                   </button>
                 )}
+                {selectedBooking.notes_url && (
+                  <button onClick={() => downloadNotes(selectedBooking.notes_url)}>
+                    📥 Download Notes
+                  </button>
+                )}
               </div>
             </>
           )}
@@ -213,6 +246,11 @@ export default function Dashboard({ onLogout }) {
                     }}
                   >
                     {cancelLoading ? <span className="spinner" /> : "Cancel Booking"}
+                  </button>
+                )}
+                {selectedBooking.notes_url && (
+                  <button onClick={() => downloadNotes(selectedBooking.notes_url)}>
+                    📥 Download Notes
                   </button>
                 )}
             <button onClick={() => setSelectedBooking(null)}>Close</button>
