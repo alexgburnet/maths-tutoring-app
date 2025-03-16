@@ -89,6 +89,8 @@ class Booking(db.Model):
     zoom_link = db.Column(db.String(512))
     zoom_meeting_id = db.Column(db.String(128))
 
+    notes_path = db.Column(db.String(255), nullable=True)
+
     def to_dict(self):
         return {
             "id": self.id,
@@ -101,6 +103,7 @@ class Booking(db.Model):
             "is_paid": self.is_paid,
             "zoom_link": self.zoom_link,
             "zoom_meeting_id": self.zoom_meeting_id,
+            "notes_path": self.notes_path,
         }
     
 class AvailableSlot(db.Model):
