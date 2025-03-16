@@ -18,7 +18,7 @@ export default function HomePage() {
     <div className="home">
       <section className="hero">
         <h1>Welcome to My Tutoring Site</h1>
-        <p>Helping students build confidence and succeed 📘</p>
+        <p>Helping students build confidence and succeed</p>
         <button onClick={handleBookClick} className="primary-btn">Book a Session</button>
       </section>
 
