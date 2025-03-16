@@ -31,7 +31,7 @@ def get_zoom_access_token():
     
     return response.json()["access_token"]
 
-def add_zoom_registrant(meeting_id, email, first_name):
+def add_zoom_registrant(meeting_id, email, first_name, surname):
     access_token = get_zoom_access_token()
     url = f"https://api.zoom.us/v2/meetings/{meeting_id}/registrants"
 
@@ -43,7 +43,7 @@ def add_zoom_registrant(meeting_id, email, first_name):
     payload = {
         "email": email,
         "first_name": first_name,
-        "last_name": "Student",
+        "last_name": surname,
     }
 
     response = requests.post(url, headers=headers, json=payload)
@@ -55,7 +55,7 @@ def add_zoom_registrant(meeting_id, email, first_name):
     return zoom_data["join_url"]
 
 
-def create_zoom_meeting(student_name, student_email, start_time_iso):
+def create_zoom_meeting(student_name, student_surname, student_email, start_time_iso):
     access_token = get_zoom_access_token()
 
     url = "https://api.zoom.us/v2/users/me/meetings"
@@ -91,7 +91,7 @@ def create_zoom_meeting(student_name, student_email, start_time_iso):
 
     print("Created zoom meeting", zoom_data["id"])
 
-    unique_url = add_zoom_registrant(zoom_data["id"], student_email, student_name)
+    unique_url = add_zoom_registrant(zoom_data["id"], student_email, student_name, student_surname)
 
     return {
         "join_url": (unique_url if unique_url else zoom_data["join_url"]),
