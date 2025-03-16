@@ -413,14 +413,15 @@ def check_payment_status(current_user, booking_id):
         monzo = MonzoClient()
         transactions = monzo.get_transactions_by_reference(reference=booking.payment_ref)
 
-        # Look for any transaction with sufficient amount (e.g., >= £20.00)
-        for txn in transactions:
-            if txn.get("amount", 0) >= 2000:
-                booking.is_paid = True
-                db.session.commit()
-                return jsonify({"message": "Payment found and marked as paid", "paid": True})
+        total_amount = sum(txn.get("amount", 0) for txn in transactions)
+        print(f"💰 Total matched amount: {total_amount}p")
 
-        return jsonify({"message": "Payment not found", "paid": False})
+        if total_amount >= 2000:
+            booking.is_paid = True
+            db.session.commit()
+            return jsonify({"message": "Payment found and marked as paid", "paid": True})
+        else:
+            return jsonify({"message": f"Total found: £{total_amount/100:.2f} — not enough", "paid": False})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
