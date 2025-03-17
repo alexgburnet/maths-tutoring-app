@@ -2,7 +2,7 @@
     display: flex;
     gap: 2rem;
     padding: 1rem;
-    height: calc(100vh - 157px); /* Keeps dashboard within viewport */
+    height: calc(100dvh - 157px); /* Keeps dashboard within viewport */
     overflow: hidden;
   }
   
@@ -20,7 +20,6 @@
   .session-split {
     display: flex;
     flex: 1;
-    gap: 1rem;
     overflow: hidden; /* Contain inner scrolling */
   }
   
@@ -66,32 +65,52 @@
     background-color: #1e1e1e;
     border-radius: 12px;
     padding: 1rem;
-    overflow: hidden; /* Prevent outer overflow */
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
+    max-height: 100%;
   }
   
   .calendar-column > * {
-    overflow-y: auto;
-    flex: 1;
+    flex: none;
+    overflow: unset;
+  }
+
+  .session-list-column::-webkit-scrollbar, .calendar-column::-webkit-scrollbar {
+    width: 6px;
+  }
+  .session-list-column::-webkit-scrollbar-thumb, .calendar-column::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+  }
+  .session-list-column::-webkit-scrollbar-track, .calendar-column::-webkit-scrollbar-track {
+    background: transparent;
   }
 
   @media (max-width: 768px) {
     .dashboard-grid {
       flex-direction: column;
-      height: calc(100vh - 157px);
+      height: calc(100dvh - 157px);
       padding: 1rem;
       gap: 1rem;
       overflow: hidden;
     }
-  
-    .session-lists,
+
     .calendar-column {
-      flex: none;
-      height: calc((100vh - 157px) / 2);
-      max-height: calc((100vh - 157px) / 2);
-      border-radius: 12px;
-      overflow: hidden;
+        flex: none;
+        height: calc((100dvh - 157px) / 2);
+        max-height: calc((100dvh - 157px) / 2);
+        border-radius: 12px;
+        overflow-y: auto; /* ✅ Keep scroll on calendar-column */
+    }
+
+
+    .session-lists {
+        flex: none;
+        height: calc((100vh - 157px) / 2);
+        max-height: calc((100vh - 157px) / 2);
+        border-radius: 12px;
+        overflow: hidden;
     }
   
     .session-split {
@@ -111,7 +130,6 @@
   
     .calendar-column > * {
       flex: 1;
-      overflow-y: auto;
     }
   }
 

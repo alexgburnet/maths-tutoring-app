@@ -25,7 +25,7 @@ export default function Calendar({ onSlotClick }) {
   }, []);
 
   return (
-    <div>
+    <div className="calendar">
       <h3>Available Slots</h3>
       {slots.length === 0 ? (
         <p>No available slots</p>
