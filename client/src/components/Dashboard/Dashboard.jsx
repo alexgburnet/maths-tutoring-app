@@ -164,7 +164,11 @@ export default function Dashboard({ onLogout }) {
             </div>
           ))
         )}
-        <div className={`scroll-arrow ${!showScrollArrow ? 'fade-out' : ''}`}>⬇Scroll for More⬇</div>
+        {(upcoming.length + previous.length > 2) && (
+          <div className={`scroll-arrow ${!showScrollArrow ? 'fade-out' : ''}`}>
+            Scroll for more
+          </div>
+        )}
       </div>
 
       {/* Right: Session detail */}
