@@ -99,8 +99,7 @@
 
     .calendar-column {
         flex: none;
-        height: calc((100dvh - 157px) / 2);
-        max-height: calc((100dvh - 157px) / 2);
+        max-height: calc((100dvh - 200px) / 2);
         border-radius: 12px;
         overflow-y: auto; /* ✅ Keep scroll on calendar-column */
     }
@@ -108,8 +107,7 @@
 
     .session-lists {
         flex: none;
-        height: calc((100vh - 157px) / 2);
-        max-height: calc((100vh - 157px) / 2);
+        max-height: calc((100vh - 200px) / 2);
         border-radius: 12px;
         overflow: hidden;
     }
