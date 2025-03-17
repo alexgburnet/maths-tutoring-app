@@ -91,7 +91,7 @@
   @media (max-width: 768px) {
     .dashboard-grid {
       flex-direction: column;
-      height: calc(100dvh - 157px);
+      height: 82dvh;
       padding: 1rem;
       gap: 1rem;
       overflow: hidden;
@@ -99,7 +99,7 @@
 
     .calendar-column {
         flex: none;
-        max-height: calc((100dvh - 200px) / 2);
+        max-height: 38dvh;
         border-radius: 12px;
         overflow-y: auto; /* ✅ Keep scroll on calendar-column */
     }
@@ -107,7 +107,7 @@
 
     .session-lists {
         flex: none;
-        max-height: calc((100vh - 200px) / 2);
+        max-height: 38dvh;
         border-radius: 12px;
         overflow: hidden;
     }

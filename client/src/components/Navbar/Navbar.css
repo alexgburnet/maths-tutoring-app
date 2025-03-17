@@ -96,6 +96,11 @@
   
   /* MOBILE STYLES */
   @media (max-width: 768px) {
+
+    .navbar {
+      height: 8dvh;
+    }
+
     .hamburger {
       display: flex;
     }
