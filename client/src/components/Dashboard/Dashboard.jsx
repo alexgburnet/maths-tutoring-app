@@ -13,6 +13,7 @@ export default function Dashboard({ onLogout }) {
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [downloadLoading, setDownloadLoading] = useState(false);
+  const [showScrollArrow, setShowScrollArrow] = useState(true);
 
   useEffect(() => {
     const handleResize = () => {
@@ -21,6 +22,25 @@ export default function Dashboard({ onLogout }) {
 
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
+    const el = document.querySelector('.session-list-column');
+    if (!el) return;
+  
+    const handleScroll = () => {
+      // Show arrow only when scrolled to the top
+      setShowScrollArrow(el.scrollTop <= 5);
+    };
+  
+    el.addEventListener('scroll', handleScroll);
+  
+    // Run once on mount to set correct state
+    handleScroll();
+  
+    return () => {
+      el.removeEventListener('scroll', handleScroll);
+    };
   }, []);
 
   const token = document.cookie
@@ -144,6 +164,7 @@ export default function Dashboard({ onLogout }) {
             </div>
           ))
         )}
+        <div className={`scroll-arrow ${!showScrollArrow ? 'fade-out' : ''}`}>⬇Scroll for More⬇</div>
       </div>
 
       {/* Right: Session detail */}
