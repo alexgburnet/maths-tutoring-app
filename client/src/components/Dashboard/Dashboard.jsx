@@ -164,7 +164,7 @@ export default function Dashboard({ onLogout }) {
             </div>
           ))
         )}
-        {(upcoming.length + previous.length > 2) && (
+        {(upcoming.length || previous.length) && (
           <div className={`scroll-arrow ${!showScrollArrow ? 'fade-out' : ''}`}>
             Scroll for more
           </div>
