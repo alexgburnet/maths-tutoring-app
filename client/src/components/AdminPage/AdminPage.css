@@ -84,3 +84,24 @@ td button {
     width: 250px;
     margin-right: 1rem;
 }
+
+/* Make table scrollable on mobile */
+.table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+  }
+  
+  /* Hide columns on mobile */
+  @media screen and (max-width: 768px) {
+    /* Hide Topic column in Upcoming Sessions */
+    .container:nth-of-type(3) th:nth-child(4),
+    .container:nth-of-type(3) td:nth-child(4) {
+      display: none;
+    }
+  
+    /* Hide Upload/Delete Notes in Previous Sessions */
+    .container:nth-of-type(4) th:nth-last-child(-n+2),
+    .container:nth-of-type(4) td:nth-last-child(-n+2) {
+      display: none;
+    }
+  }
