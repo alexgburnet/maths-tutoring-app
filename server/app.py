@@ -427,7 +427,7 @@ def check_payment_status(current_user, booking_id):
         return jsonify({"error": str(e)}), 500
     
 
-@app.route("/callback")
+@app.route("/api/callback")
 def oauth_callback():
     import requests
 
@@ -509,7 +509,7 @@ def delete_notes(current_user, booking_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     
-@app.route("/monzo-auth")
+@app.route("/api/monzo-auth")
 def monzo_auth():
     client_id = os.getenv("MONZO_CLIENT_ID")
     redirect_uri = "https://tutoring.alexbur.net/callback"
