@@ -28,6 +28,7 @@ jobs:
             echo "ZOOM_ACCOUNT_ID=${{ secrets.ZOOM_ACCOUNT_ID }}"
             echo "ZOOM_CLIENT_ID=${{ secrets.ZOOM_CLIENT_ID }}"
             echo "ZOOM_CLIENT_SECRET=${{ secrets.ZOOM_CLIENT_SECRET }}"
+            echo "ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}"
           } > .env
 
       - name: 🧹 Stop containers (if running)
