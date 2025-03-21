@@ -13,8 +13,27 @@ jobs:
       - name: 📦 Checkout code
         uses: actions/checkout@v3
 
-      - name: 🛠 Write .env file
-        run: echo "${{ secrets.ENV_CONTENT }}" > .env
+      - name: 🛠 Write .env file (excluding Monzo access/refresh tokens)
+        run: |
+          {
+            echo "USER_ID=${{ secrets.USER_ID }}"
+            echo "MONZO_ACCOUNT_ID=${{ secrets.MONZO_ACCOUNT_ID }}"
+            echo "MONZO_CLIENT_ID=${{ secrets.MONZO_CLIENT_ID }}"
+            echo "MONZO_CLIENT_SECRET=${{ secrets.MONZO_CLIENT_SECRET }}"
+            echo "POSTGRES_USER=${{ secrets.POSTGRES_USER }}"
+            echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}"
+            echo "POSTGRES_DB=${{ secrets.POSTGRES_DB }}"
+            echo "POSTGRES_PORT=${{ secrets.POSTGRES_PORT }}"
+            echo "ZOOM_ACCOUNT_ID=${{ secrets.ZOOM_ACCOUNT_ID }}"
+            echo "ZOOM_CLIENT_ID=${{ secrets.ZOOM_CLIENT_ID }}"
+            echo "ZOOM_CLIENT_SECRET=${{ secrets.ZOOM_CLIENT_SECRET }}"
+          } > .env
+
+      - name: 🔐 Append tokens only if not already set
+        run: |
+          if [ ! -f .env ]; then touch .env; fi
+          grep -q "MONZO_ACCESS_TOKEN=" .env || echo "MONZO_ACCESS_TOKEN=${{ secrets.MONZO_ACCESS_TOKEN }}" >> .env
+          grep -q "MONZO_REFRESH_TOKEN=" .env || echo "MONZO_REFRESH_TOKEN=${{ secrets.MONZO_REFRESH_TOKEN }}" >> .env
 
       - name: 🧹 Stop containers (if running)
         run: docker-compose down || true
