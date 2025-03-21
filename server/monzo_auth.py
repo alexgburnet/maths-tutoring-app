@@ -9,7 +9,17 @@ load_dotenv()
 CLIENT_ID = os.getenv("MONZO_CLIENT_ID")
 CLIENT_SECRET = os.getenv("MONZO_CLIENT_SECRET")
 REDIRECT_URI = "http://localhost:5000/callback"
-AUTH_URL = f"https://auth.monzo.com/?client_id={CLIENT_ID}&redirect_uri={REDIRECT_URI}&response_type=code&state=secure123"
+
+# ✅ Add required scopes
+SCOPES = "read_accounts read_transactions"
+
+AUTH_URL = (
+    f"https://auth.monzo.com/?client_id={CLIENT_ID}"
+    f"&redirect_uri={REDIRECT_URI}"
+    f"&response_type=code"
+    f"&state=secure123"
+    f"&scope={SCOPES}"
+)
 
 app = Flask(__name__)
 
@@ -46,8 +56,11 @@ def oauth_callback():
     print("🔁 Refresh Token:", refresh_token)
 
     # Update .env
-    with open(".env", "r") as f:
-        lines = f.readlines()
+    try:
+        with open(".env", "r") as f:
+            lines = f.readlines()
+    except FileNotFoundError:
+        lines = []
 
     with open(".env", "w") as f:
         for line in lines:
