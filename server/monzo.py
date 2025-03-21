@@ -1,6 +1,7 @@
-from dotenv import load_dotenv
 import os
+import time
 import requests
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -11,11 +12,14 @@ class MonzoClient:
         self.client_secret = os.getenv("MONZO_CLIENT_SECRET")
         self.refresh_token = os.getenv("MONZO_REFRESH_TOKEN")
         self.account_id = os.getenv("MONZO_ACCOUNT_ID")
-        self.access_token = os.getenv("MONZO_ACCESS_TOKEN")
-        self.headers = {"Authorization": f"Bearer {self.access_token}"}
+
+        self.access_token = None
+        self.token_expires_at = 0  # Unix timestamp
+        self.refresh_access_token()
 
     def refresh_access_token(self):
         print("🔁 Refreshing Monzo access token...")
+
         response = requests.post(
             f"{self.base_url}/oauth2/token",
             data={
@@ -29,19 +33,19 @@ class MonzoClient:
         if response.status_code != 200:
             raise Exception(f"❌ Failed to refresh token: {response.status_code} - {response.text}")
 
-        new_token = response.json()["access_token"]
-        self.access_token = new_token
-        self.headers = {"Authorization": f"Bearer {self.access_token}"}
+        token_data = response.json()
+        self.access_token = token_data["access_token"]
+        expires_in = token_data.get("expires_in", 3600)
+        self.token_expires_at = time.time() + expires_in - 60  # Refresh 1 minute early
         print("✅ Token refreshed!")
 
-        # Optionally, write it back to the .env file or to a secrets file
-        with open(".env", "r") as f:
-            lines = f.readlines()
-        with open(".env", "w") as f:
-            for line in lines:
-                if not line.startswith("MONZO_ACCESS_TOKEN="):
-                    f.write(line)
-            f.write(f"MONZO_ACCESS_TOKEN={new_token}\n")
+    def get_access_token(self):
+        if time.time() >= self.token_expires_at:
+            self.refresh_access_token()
+        return self.access_token
+
+    def get_headers(self):
+        return {"Authorization": f"Bearer {self.get_access_token()}"}
 
     def get_transactions(self, since=None, limit=None, retry=True):
         params = {"account_id": self.account_id}
@@ -50,15 +54,15 @@ class MonzoClient:
         if limit:
             params["limit"] = limit
 
-        response = requests.get(f"{self.base_url}/transactions", headers=self.headers, params=params)
+        response = requests.get(f"{self.base_url}/transactions", headers=self.get_headers(), params=params)
 
         if response.status_code == 401 and retry:
-            # Token expired — try to refresh
+            print("⚠️ Access token expired, retrying after refresh...")
             self.refresh_access_token()
             return self.get_transactions(since=since, limit=limit, retry=False)
 
         if response.status_code != 200:
-            raise Exception(f"Failed to fetch transactions: {response.status_code} - {response.text}")
+            raise Exception(f"❌ Failed to fetch transactions: {response.status_code} - {response.text}")
         
         return response.json()["transactions"]
 
