@@ -439,7 +439,7 @@ def oauth_callback():
         "grant_type": "authorization_code",
         "client_id": os.getenv("MONZO_CLIENT_ID"),
         "client_secret": os.getenv("MONZO_CLIENT_SECRET"),
-        "redirect_uri": "https://tutoring.alexbur.net/callback",
+        "redirect_uri": "https://tutoring.alexbur.net/api/callback",
         "code": code,
     }
 
@@ -512,7 +512,7 @@ def delete_notes(current_user, booking_id):
 @app.route("/api/monzo-auth")
 def monzo_auth():
     client_id = os.getenv("MONZO_CLIENT_ID")
-    redirect_uri = "https://tutoring.alexbur.net/callback"
+    redirect_uri = "https://tutoring.alexbur.net/api/callback"
     state = str(uuid.uuid4())  # Optional but good for CSRF protection
 
     auth_url = (
