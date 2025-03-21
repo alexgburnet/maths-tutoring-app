@@ -429,9 +429,28 @@ def check_payment_status(current_user, booking_id):
 
 @app.route("/callback")
 def oauth_callback():
+    import requests
+
     code = request.args.get("code")
     print(f"🔐 Received authorization code: {code}")
-    return "✅ Authorization code received. You can now close this tab."
+
+    token_url = "https://api.monzo.com/oauth2/token"
+    data = {
+        "grant_type": "authorization_code",
+        "client_id": os.getenv("MONZO_CLIENT_ID"),
+        "client_secret": os.getenv("MONZO_CLIENT_SECRET"),
+        "redirect_uri": "https://tutoring.alexbur.net/callback",
+        "code": code,
+    }
+
+    response = requests.post(token_url, data=data)
+    if response.status_code == 200:
+        tokens = response.json()
+        print("✅ Got tokens:", tokens)
+        return jsonify(tokens)  # Or safely log/store them
+    else:
+        print("❌ Token exchange failed:", response.text)
+        return "Failed to get tokens", 400
 
 @app.route("/api/admin/upload-notes/<int:booking_id>", methods=["POST"])
 @admin_required
@@ -489,3 +508,16 @@ def delete_notes(current_user, booking_id):
         return jsonify({"message": "Notes deleted"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+@app.route("/monzo-auth")
+def monzo_auth():
+    client_id = os.getenv("MONZO_CLIENT_ID")
+    redirect_uri = "https://tutoring.alexbur.net/callback"
+    state = str(uuid.uuid4())  # Optional but good for CSRF protection
+
+    auth_url = (
+        f"https://auth.monzo.com/?client_id={client_id}"
+        f"&redirect_uri={redirect_uri}"
+        f"&response_type=code&state={state}"
+    )
+    return f'<a href="{auth_url}">Click here to authorize Monzo</a>'

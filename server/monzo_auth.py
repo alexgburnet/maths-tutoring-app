@@ -55,20 +55,6 @@ def oauth_callback():
     print("🔑 Access Token:", access_token)
     print("🔁 Refresh Token:", refresh_token)
 
-    # Update .env
-    try:
-        with open(".env", "r") as f:
-            lines = f.readlines()
-    except FileNotFoundError:
-        lines = []
-
-    with open(".env", "w") as f:
-        for line in lines:
-            if not line.startswith("MONZO_ACCESS_TOKEN=") and not line.startswith("MONZO_REFRESH_TOKEN="):
-                f.write(line)
-        f.write(f"MONZO_ACCESS_TOKEN={access_token}\n")
-        f.write(f"MONZO_REFRESH_TOKEN={refresh_token}\n")
-
     return "✅ Tokens received and saved! You can close this tab."
 
 if __name__ == "__main__":
