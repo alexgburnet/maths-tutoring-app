@@ -13,6 +13,9 @@ from flask_migrate import Migrate
 from monzo import MonzoClient
 from zoom import create_zoom_meeting, delete_zoom_meeting
 from werkzeug.utils import secure_filename
+from functools import wraps
+
+from mathpix_helper import extract_latex_from_pdf
 
 # Load .env file
 load_dotenv()
@@ -64,7 +67,6 @@ def update_paid_status_for_bookings():
     
     db.session.commit()
 
-from functools import wraps
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -474,6 +476,12 @@ def upload_notes(current_user, booking_id):
     # Save filename/path in DB
     booking.notes_filename = filename
     db.session.commit()
+
+    # Extract and print LaTeX from uploaded notes
+    try:
+        print(extract_latex_from_pdf(file_path))
+    except Exception as e:
+        print(f"⚠️ Failed to extract LaTeX from uploaded notes: {e}")
 
     return jsonify({"message": "Notes uploaded successfully"})
 
