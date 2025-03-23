@@ -111,6 +111,42 @@ export default function Dashboard({ onLogout }) {
     }
   };
 
+  const downloadFollowup = async (url) => {
+    setDownloadLoading(true);
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: token,
+        },
+      });
+  
+      if (!response.ok) {
+        alert("❌ Failed to download follow-up questions.");
+        return;
+      }
+  
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+  
+      const contentDisposition = response.headers.get("Content-Disposition");
+      const match = contentDisposition?.match(/filename="(.+)"/);
+      const filename = match ? match[1] : "followup_questions.pdf";
+  
+      link.href = downloadUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error("Download error:", error);
+      alert("Something went wrong while downloading.");
+    } finally {
+      setDownloadLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchBookings();
   }, []);
@@ -226,6 +262,16 @@ export default function Dashboard({ onLogout }) {
                     {downloadLoading ? <span className="spinner" /> : <span>📥 Download Notes</span>}
                   </button>
                 )}
+                {selectedBooking.notes_url && (
+                  <button onClick={() => downloadNotes(selectedBooking.notes_url)} disabled={downloadLoading}>
+                    {downloadLoading ? <span className="spinner" /> : <span>📥 Download Notes</span>}
+                  </button>
+                )}
+                {selectedBooking.followup_url && (
+                  <button onClick={() => downloadFollowup(selectedBooking.followup_url)} disabled={downloadLoading}>
+                    {downloadLoading ? <span className="spinner" /> : <span>📘 Download Follow-up Questions</span>}
+                  </button>
+                )}
               </div>
             </>
           )}
@@ -285,6 +331,16 @@ export default function Dashboard({ onLogout }) {
                 {selectedBooking.notes_url && (
                   <button onClick={() => downloadNotes(selectedBooking.notes_url)} disabled={downloadLoading}>
                     {downloadLoading ? <span className="spinner" /> : <span>📥 Download Notes</span>}
+                  </button>
+                )}
+                {selectedBooking.notes_url && (
+                  <button onClick={() => downloadNotes(selectedBooking.notes_url)} disabled={downloadLoading}>
+                    {downloadLoading ? <span className="spinner" /> : <span>📥 Download Notes</span>}
+                  </button>
+                )}
+                {selectedBooking.followup_url && (
+                  <button onClick={() => downloadFollowup(selectedBooking.followup_url)} disabled={downloadLoading}>
+                    {downloadLoading ? <span className="spinner" /> : <span>📘 Download Follow-up Questions</span>}
                   </button>
                 )}
             <button onClick={() => setSelectedBooking(null)}>Close</button>
