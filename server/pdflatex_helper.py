@@ -6,8 +6,20 @@ import logging
 def render_latex_to_pdf(latex_code, output_path):
     with tempfile.TemporaryDirectory() as tmpdir:
         tex_file = os.path.join(tmpdir, "document.tex")
+
+        # Write LaTeX boilerplate and wrap content
         with open(tex_file, "w") as f:
+            f.write(r"""
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{enumitem}
+\usepackage{geometry}
+\geometry{margin=1in}
+\begin{document}
+""")
             f.write(latex_code)
+            f.write("\n\\end{document}")
 
         logging.info(f"📘 Writing LaTeX to: {tex_file}")
 
@@ -29,12 +41,11 @@ def render_latex_to_pdf(latex_code, output_path):
             logging.error("❌ pdflatex failed. Stderr output below:")
             logging.error(stderr_output)
 
-            # Read the .log file for LaTeX-specific errors
             log_path = os.path.join(tmpdir, "document.log")
             if os.path.exists(log_path):
                 with open(log_path) as log_file:
                     log_content = log_file.read()
                     logging.error("📄 LaTeX log file content:")
-                    logging.error(log_content[-1000:])  # Show last part (where errors usually are)
+                    logging.error(log_content[-1000:])
 
             raise RuntimeError("pdflatex failed", stderr_output)
