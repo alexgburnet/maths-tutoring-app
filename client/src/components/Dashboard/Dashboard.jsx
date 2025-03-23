@@ -333,11 +333,6 @@ export default function Dashboard({ onLogout }) {
                     {downloadLoading ? <span className="spinner" /> : <span>📥 Download Notes</span>}
                   </button>
                 )}
-                {selectedBooking.notes_url && (
-                  <button onClick={() => downloadNotes(selectedBooking.notes_url)} disabled={downloadLoading}>
-                    {downloadLoading ? <span className="spinner" /> : <span>📥 Download Notes</span>}
-                  </button>
-                )}
                 {selectedBooking.followup_url && (
                   <button onClick={() => downloadFollowup(selectedBooking.followup_url)} disabled={downloadLoading}>
                     {downloadLoading ? <span className="spinner" /> : <span>📘 Download Follow-up Questions</span>}
