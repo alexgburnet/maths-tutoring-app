@@ -3,10 +3,15 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install OS dependencies for psycopg2 and general build tools
+# Install OS dependencies for psycopg2, LaTeX, and build tools
 RUN apt-get update && apt-get install -y \
     gcc \
     libpq-dev \
+    texlive-latex-base \
+    texlive-latex-recommended \
+    texlive-fonts-recommended \
+    texlive-latex-extra \
+    fonts-lmodern \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
