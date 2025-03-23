@@ -2,6 +2,7 @@ import subprocess
 import tempfile
 import os
 import logging
+import shutil
 
 def render_latex_to_pdf(latex_code, output_path):
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -33,7 +34,7 @@ def render_latex_to_pdf(latex_code, output_path):
             )
 
             pdf_path = os.path.join(tmpdir, "document.pdf")
-            os.rename(pdf_path, output_path)
+            shutil.move(pdf_path, output_path)
             logging.info(f"✅ PDF generated at: {output_path}")
 
         except subprocess.CalledProcessError as e:
