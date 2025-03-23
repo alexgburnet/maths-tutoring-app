@@ -461,12 +461,16 @@ def oauth_callback():
 @app.route("/api/admin/upload-notes/<int:booking_id>", methods=["POST"])
 @admin_required
 def upload_notes(current_user, booking_id):
+    print(f"📥 Received notes upload for booking ID {booking_id}")
+    
     booking = Booking.query.get_or_404(booking_id)
     if "notes" not in request.files:
+        print("❌ No file part in request")
         return jsonify({"error": "No file part"}), 400
 
     file = request.files["notes"]
     if file.filename == "":
+        print("❌ No selected file")
         return jsonify({"error": "No selected file"}), 400
 
     ext = os.path.splitext(file.filename)[1]
@@ -474,31 +478,32 @@ def upload_notes(current_user, booking_id):
     filename = secure_filename(f"{booking_id}_{unique_id}{ext}")
     file_path = os.path.join(UPLOAD_FOLDER, filename)
     
-    # Save the file
+    print(f"📄 Saving uploaded notes to: {file_path}")
     file.save(file_path)
-
-    # Save filename/path in DB
     booking.notes_filename = filename
-    db.session.commit()
 
-    # Extract and print LaTeX from uploaded notes
     try:
+        print("🔍 Extracting LaTeX from uploaded notes...")
         latex_text = extract_latex_from_pdf(file_path)
 
-        # Get follow-up questions in LaTeX from OpenAI
+        print("🤖 Generating follow-up questions using OpenAI...")
         followup_questions_latex = generate_followup_questions_latex(latex_text)
 
-        # Generate the PDF
         followup_filename = secure_filename(f"{booking_id}_{uuid.uuid4().hex[:8]}_questions.pdf")
         followup_path = os.path.join(UPLOAD_FOLDER, followup_filename)
+
+        print(f"📄 Compiling LaTeX to PDF: {followup_path}")
         render_latex_to_pdf(followup_questions_latex, followup_path)
 
-        # Save the file reference to DB
         booking.followup_filename = followup_filename
-        db.session.commit()
+        print(f"✅ Follow-up questions saved as: {followup_filename}")
     except Exception as e:
         print(f"⚠️ Failed to process follow-up questions: {e}")
 
+    print("💾 Committing changes to database...")
+    db.session.commit()
+
+    print("✅ Notes upload and follow-up processing complete.")
     return jsonify({"message": "Notes uploaded successfully"})
 
 @app.route("/uploads/notes/<filename>")
