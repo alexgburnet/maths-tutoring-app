@@ -22,6 +22,8 @@ Requirements:
 - Use clean, valid LaTeX (no explanations, only the worksheet body)
 - Use only basic math packages (like amsmath), and avoid packages like tikz or fancyhdr.
 
+Please return only the LaTeX *body content* (e.g., questions in LaTeX), without wrapping it in \documentclass or \begin document...\end document . I will wrap it myself.
+
 Session Notes:
 {latex_input}
 """
