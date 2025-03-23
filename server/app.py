@@ -16,6 +16,8 @@ from werkzeug.utils import secure_filename
 from functools import wraps
 
 from mathpix_helper import extract_latex_from_pdf
+from server.openai_helper import generate_followup_questions_latex
+from server.pdflatex_helper import render_latex_to_pdf
 
 # Load .env file
 load_dotenv()
@@ -101,6 +103,7 @@ class Booking(db.Model):
     zoom_meeting_id = db.Column(db.String(128))
 
     notes_filename = db.Column(db.String(255), nullable=True)
+    followup_filename = db.Column(db.String(255), nullable=True)
 
     def to_dict(self):
         return {
@@ -115,6 +118,7 @@ class Booking(db.Model):
             "zoom_link": self.zoom_link,
             "zoom_meeting_id": self.zoom_meeting_id,
             "notes_url": f"https://tutoring.alexbur.net/uploads/notes/{self.notes_filename}" if self.notes_filename else None,
+            "followup_url": f"https://tutoring.alexbur.net/uploads/notes/{self.followup_filename}" if self.followup_filename else None,
         }
     
 class AvailableSlot(db.Model):
@@ -479,9 +483,21 @@ def upload_notes(current_user, booking_id):
 
     # Extract and print LaTeX from uploaded notes
     try:
-        print(extract_latex_from_pdf(file_path))
+        latex_text = extract_latex_from_pdf(file_path)
+
+        # Get follow-up questions in LaTeX from OpenAI
+        followup_questions_latex = generate_followup_questions_latex(latex_text)
+
+        # Generate the PDF
+        followup_filename = secure_filename(f"{booking_id}_{uuid.uuid4().hex[:8]}_questions.pdf")
+        followup_path = os.path.join(UPLOAD_FOLDER, followup_filename)
+        render_latex_to_pdf(followup_questions_latex, followup_path)
+
+        # Save the file reference to DB
+        booking.followup_filename = followup_filename
+        db.session.commit()
     except Exception as e:
-        print(f"⚠️ Failed to extract LaTeX from uploaded notes: {e}")
+        print(f"⚠️ Failed to process follow-up questions: {e}")
 
     return jsonify({"message": "Notes uploaded successfully"})
 
