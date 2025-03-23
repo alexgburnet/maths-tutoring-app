@@ -260,7 +260,6 @@ export default function AdminPage() {
                 <th>Paid</th>
                 <th>Upload Notes</th>
                 <th>Delete Notes</th>
-                <th>Follow-up</th>
               </tr>
             </thead>
             <tbody>
@@ -354,13 +353,6 @@ export default function AdminPage() {
                           "-"
                         )}
                       </td>
-                      <td>
-                      {b.followup_url ? (
-                        <button onClick={() => downloadNotes(b.followup_url)}>📘 Download</button>
-                      ) : (
-                        "-"
-                      )}
-                    </td>
                     </tr>
                   );
                 })}
