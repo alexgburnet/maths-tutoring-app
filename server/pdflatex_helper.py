@@ -1,37 +1,53 @@
-import os
 import subprocess
 import tempfile
-import shutil
+import os
+import logging
 
-def render_latex_to_pdf(latex_body, output_path):
-    latex_document = r"""\documentclass{article}
-\usepackage[utf8]{inputenc}
+def render_latex_to_pdf(latex_content, output_path):
+    logging.info("🛠 Rendering LaTeX to PDF...")
+
+    # Ensure LaTeX content is wrapped properly
+    if r"\begin{document}" not in latex_content:
+        latex_content = r"""\documentclass{article}
 \usepackage{amsmath}
-\usepackage{geometry}
-\geometry{margin=1in}
 \begin{document}
-\section*{Follow-up Questions}
-""" + latex_body + "\n\\end{document}"
+""" + latex_content + r"""
+\end{document}
+"""
 
-    with tempfile.TemporaryDirectory() as tempdir:
-        tex_path = os.path.join(tempdir, "document.tex")
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tex_path = os.path.join(tmpdir, "document.tex")
+        logging.info("🔎 GPT-generated LaTeX:\n" + latex_content)
 
-        with open(tex_path, "w", encoding="utf-8") as f:
-            f.write(latex_document)
+        # Write LaTeX to file
+        with open(tex_path, "w") as f:
+            f.write(latex_content)
+
+        # Also save a copy for debugging
+        with open("/tmp/debug_generated.tex", "w") as debug_file:
+            debug_file.write(latex_content)
+        logging.info(f"📄 LaTeX written to: {tex_path}")
+        logging.info("📁 Backup saved to: /tmp/debug_generated.tex")
 
         try:
             subprocess.run(
                 ["pdflatex", "-interaction=nonstopmode", tex_path],
-                cwd=tempdir,
+                cwd=tmpdir,
                 check=True,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
+                stderr=subprocess.PIPE,
             )
         except subprocess.CalledProcessError as e:
-            raise RuntimeError("pdflatex failed", e.stderr.decode())
+            stderr_output = e.stderr.decode(errors="ignore") if e.stderr else "No stderr output"
+            logging.error("❌ pdflatex failed. Stderr output below:")
+            logging.error(stderr_output)
+            raise RuntimeError("pdflatex failed", stderr_output)
 
-        generated_pdf = os.path.join(tempdir, "document.pdf")
+        # Move PDF to target location
+        generated_pdf = os.path.join(tmpdir, "document.pdf")
         if os.path.exists(generated_pdf):
-            shutil.move(generated_pdf, output_path)
+            os.replace(generated_pdf, output_path)
+            logging.info(f"✅ PDF successfully saved to: {output_path}")
         else:
-            raise FileNotFoundError("PDF was not generated")
+            logging.error("❌ PDF was not generated.")
+            raise RuntimeError("PDF file not found after pdflatex.")
