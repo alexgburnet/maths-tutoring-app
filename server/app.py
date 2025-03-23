@@ -19,6 +19,13 @@ from mathpix_helper import extract_latex_from_pdf
 from openai_helper import generate_followup_questions_latex
 from pdflatex_helper import render_latex_to_pdf
 
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+)
+
 # Load .env file
 load_dotenv()
 
@@ -461,49 +468,49 @@ def oauth_callback():
 @app.route("/api/admin/upload-notes/<int:booking_id>", methods=["POST"])
 @admin_required
 def upload_notes(current_user, booking_id):
-    print(f"📥 Received notes upload for booking ID {booking_id}")
+    logging.info(f"📥 Received notes upload for booking ID {booking_id}")
     
     booking = Booking.query.get_or_404(booking_id)
     if "notes" not in request.files:
-        print("❌ No file part in request")
+        logging.warning("❌ No file part in request")
         return jsonify({"error": "No file part"}), 400
 
     file = request.files["notes"]
     if file.filename == "":
-        print("❌ No selected file")
+        logging.warning("❌ No selected file")
         return jsonify({"error": "No selected file"}), 400
 
     ext = os.path.splitext(file.filename)[1]
     unique_id = uuid.uuid4().hex[:8]
     filename = secure_filename(f"{booking_id}_{unique_id}{ext}")
     file_path = os.path.join(UPLOAD_FOLDER, filename)
-    
-    print(f"📄 Saving uploaded notes to: {file_path}")
+
+    logging.info(f"📄 Saving uploaded notes to: {file_path}")
     file.save(file_path)
     booking.notes_filename = filename
 
     try:
-        print("🔍 Extracting LaTeX from uploaded notes...")
+        logging.info("🔍 Extracting LaTeX from uploaded notes...")
         latex_text = extract_latex_from_pdf(file_path)
 
-        print("🤖 Generating follow-up questions using OpenAI...")
+        logging.info("🤖 Generating follow-up questions with OpenAI...")
         followup_questions_latex = generate_followup_questions_latex(latex_text)
 
         followup_filename = secure_filename(f"{booking_id}_{uuid.uuid4().hex[:8]}_questions.pdf")
         followup_path = os.path.join(UPLOAD_FOLDER, followup_filename)
 
-        print(f"📄 Compiling LaTeX to PDF: {followup_path}")
+        logging.info(f"📘 Rendering LaTeX to PDF: {followup_path}")
         render_latex_to_pdf(followup_questions_latex, followup_path)
 
         booking.followup_filename = followup_filename
-        print(f"✅ Follow-up questions saved as: {followup_filename}")
+        logging.info(f"✅ Follow-up questions saved as: {followup_filename}")
     except Exception as e:
-        print(f"⚠️ Failed to process follow-up questions: {e}")
+        logging.error("⚠️ Failed to process follow-up questions", exc_info=True)
 
-    print("💾 Committing changes to database...")
+    logging.info("💾 Committing changes to database...")
     db.session.commit()
 
-    print("✅ Notes upload and follow-up processing complete.")
+    logging.info("✅ Notes upload and follow-up processing complete.")
     return jsonify({"message": "Notes uploaded successfully"})
 
 @app.route("/uploads/notes/<filename>")
