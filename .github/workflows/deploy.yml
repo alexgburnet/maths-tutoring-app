@@ -29,6 +29,9 @@ jobs:
             echo "ZOOM_CLIENT_ID=${{ secrets.ZOOM_CLIENT_ID }}"
             echo "ZOOM_CLIENT_SECRET=${{ secrets.ZOOM_CLIENT_SECRET }}"
             echo "ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}"
+            echo "MATHPIX_APP_KEY=${{ secrets.MATHPIX_APP_KEY }}"
+            echo "MATHPIX_APP_ID=${{ secrets.MATHPIX_APP_ID }}"
+            echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}"
           } > .env
 
       - name: 🧹 Stop containers (if running)
