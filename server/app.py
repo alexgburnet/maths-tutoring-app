@@ -16,8 +16,8 @@ from werkzeug.utils import secure_filename
 from functools import wraps
 
 from mathpix_helper import extract_latex_from_pdf
-from server.openai_helper import generate_followup_questions_latex
-from server.pdflatex_helper import render_latex_to_pdf
+from openai_helper import generate_followup_questions_latex
+from pdflatex_helper import render_latex_to_pdf
 
 # Load .env file
 load_dotenv()
