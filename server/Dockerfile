@@ -9,9 +9,12 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     texlive-latex-base \
     texlive-latex-recommended \
-    texlive-fonts-recommended \
     texlive-latex-extra \
+    texlive-fonts-recommended \
+    texlive-fonts-extra \
+    texlive-science \
     fonts-lmodern \
+    ghostscript \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
