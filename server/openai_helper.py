@@ -12,15 +12,15 @@ client = OpenAI()
 
 def generate_followup_questions_latex(latex_input):
     prompt = f"""
-You are a helpful maths tutor. Based on the session notes below (in LaTeX), generate a worksheet in LaTeX format.
+You are a helpful maths tutor. Based on the session notes below (in LaTeX), generate the content for a worksheet **only inside** the document — do not include \\documentclass, \\begin{{document}}, or \\end{{document}}.
 
 Requirements:
 - Around 10 GCSE-style exam questions that reinforce the concepts covered
 - Group questions by topic, progressing from easier to harder
 - Add a 'Bonus Question' for each topic
 - Include an 'Answers' section at the end
-- Use clean, valid LaTeX (no explanations, only the worksheet)
-- Make sure the output compiles (e.g. use \\usepackage{{amsmath}})
+- Use clean, valid LaTeX (no explanations, only the worksheet body)
+- Use only basic math packages (like amsmath), and avoid packages like tikz or fancyhdr.
 
 Session Notes:
 {latex_input}
