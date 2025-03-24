@@ -1,5 +1,5 @@
 import { Navigate } from "react-router-dom";
-import { getTokenFromCookie, isTokenValid } from "../auth";
+import { getTokenFromCookie, isTokenValid } from "../services/auth";
 
 export default function ProtectedRoute({ children }) {
   const token = getTokenFromCookie();
