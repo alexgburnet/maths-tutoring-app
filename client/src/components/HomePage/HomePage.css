@@ -1,0 +1,35 @@
+.home-page {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    height: 100vh;
+}
+
+.text-container {
+    Padding-left: 20vw;
+}
+
+.dock-text {
+    display: flex;
+    font-size: 4rem;
+    font-weight: 700;
+    user-select: none;
+    gap: 0.05em;
+}
+  
+.letter {
+    display: inline-block;
+    transition: transform 0.1s ease;
+    transform-origin: center bottom;
+}
+
+h1 {
+    font-size: 5rem;
+    font-weight: 700;
+    color: #333;
+    margin: 0;
+}
+
+h2 {
+    margin: 0;
+}
