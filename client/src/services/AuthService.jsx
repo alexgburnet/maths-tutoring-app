@@ -15,10 +15,9 @@ class AuthService {
     return res.data;
   }
 
-  logout() {
+  async logout() {
+    await axios.post('/logout', {}, { withCredentials: true });
     clearAccessToken(); // Clear access token from memory
-    // Optionally: make a /logout call to clear refresh cookie
-    // await axios.post('/logout', {}, { withCredentials: true });
   }
 }
 
