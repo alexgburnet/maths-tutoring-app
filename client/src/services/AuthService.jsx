@@ -1,22 +1,24 @@
 // src/services/AuthService.js
 import axios from './axios';
-import { clearTokenCookie } from './auth';
+import { setAccessToken, clearAccessToken } from './auth';
 
 class AuthService {
   async login(email, password) {
-    const res = await axios.post('/login', { email, password });
-    document.cookie = `token=${res.data.token}; path=/`;
+    const res = await axios.post('/login', { email, password }, { withCredentials: true });
+    setAccessToken(res.data.access_token); // Store in memory
     return res.data;
   }
 
   async register(name, surname, email, password) {
-    const res = await axios.post('/register', { name, surname, email, password });
-    document.cookie = `token=${res.data.token}; path=/`;
+    const res = await axios.post('/register', { name, surname, email, password }, { withCredentials: true });
+    setAccessToken(res.data.access_token); // Store in memory
     return res.data;
   }
 
   logout() {
-    clearTokenCookie();
+    clearAccessToken(); // Clear access token from memory
+    // Optionally: make a /logout call to clear refresh cookie
+    // await axios.post('/logout', {}, { withCredentials: true });
   }
 }
 
