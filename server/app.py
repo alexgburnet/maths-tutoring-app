@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_from_directory, send_file
+from flask import Flask, request, jsonify, send_from_directory, send_file, make_response
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import desc
 from flask_cors import CORS
@@ -31,7 +31,7 @@ load_dotenv()
 
 # Init Flask
 app = Flask(__name__)
-CORS(app)
+CORS(app, supports_credentials=True)
 
 # Database config
 DB_USER = os.getenv("POSTGRES_USER")
@@ -147,8 +147,14 @@ def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         token = request.headers.get("Authorization")
+
+        # Support "Bearer <token>" or just "<token>"
         if not token:
             return jsonify({"error": "Token is missing"}), 401
+
+        if token.startswith("Bearer "):
+            token = token.split(" ")[1]
+
         try:
             payload = pyjwt.decode(token, SECRET_KEY, algorithms=["HS256"])
             user = User.query.get(payload["user_id"])
@@ -191,15 +197,34 @@ def register():
     db.session.add(user)
     db.session.commit()
 
-    payload = {
+    access_payload = {
         "user_id": user.id,
         "is_admin": user.is_admin,
         "name": user.name,
         "surname": user.surname,
         "exp": datetime.utcnow() + timedelta(hours=2)
     }
-    token = pyjwt.encode(payload, SECRET_KEY, algorithm="HS256")
-    return jsonify({"token": token})
+
+    refresh_payload = {
+        "user_id": user.id,
+        "exp": datetime.utcnow() + timedelta(days=30)
+    }
+
+    access_token = pyjwt.encode(access_payload, SECRET_KEY, algorithm="HS256")
+    refresh_token = pyjwt.encode(refresh_payload, SECRET_KEY, algorithm="HS256")
+
+    response = jsonify({"access_token": access_token})
+
+    response.set_cookie(
+        "refresh_token",
+        refresh_token,
+        httponly=True,
+        secure=True,
+        samesite="Strict",
+        max_age=60 * 60 * 24 * 30  # 30 days
+    )
+
+    return response
 
 @app.route("/api/login", methods=["POST"])
 def login():
@@ -209,17 +234,69 @@ def login():
     if not user or not user.check_password(data["password"]):
         return jsonify({"error": "Invalid credentials"}), 401
 
-    payload = {
+    access_payload = {
         "user_id": user.id,
         "is_admin": user.is_admin,
         "name": user.name,
         "surname": user.surname,
         "exp": datetime.utcnow() + timedelta(hours=2)
     }
-    token = pyjwt.encode(payload, SECRET_KEY, algorithm="HS256")
 
-    print(f"User {user.email} logged in")
-    return jsonify({"token": token})
+    refresh_payload = {
+        "user_id": user.id,
+        "exp": datetime.utcnow() + timedelta(days=30)
+    }
+
+    access_token = pyjwt.encode(access_payload, SECRET_KEY, algorithm="HS256")
+    refresh_token = pyjwt.encode(refresh_payload, SECRET_KEY, algorithm="HS256")
+
+    response = jsonify({"access_token": access_token})
+
+    response.set_cookie(
+        "refresh_token",
+        refresh_token,
+        httponly=True,
+        secure=True,
+        samesite="Strict",
+        max_age=60 * 60 * 24 * 30  # 30 days
+    )
+
+    return response
+
+
+@app.route("/api/refresh", methods=["POST"])
+def refresh():
+    refresh_token = request.cookies.get("refresh_token")
+    if not refresh_token:
+        return jsonify({"error": "No refresh token"}), 401
+
+    try:
+        payload = pyjwt.decode(refresh_token, SECRET_KEY, algorithms=["HS256"])
+        new_access_token = pyjwt.encode({
+            "user_id": payload["user_id"],
+            "exp": datetime.utcnow() + timedelta(minutes=15),
+        }, SECRET_KEY, algorithm="HS256")
+
+        return jsonify({ "access_token": new_access_token })
+
+    except Exception as e:
+        return jsonify({ "error": "Invalid refresh token" }), 401
+    
+@app.route("/api/logout", methods=["POST"])
+def logout():
+    response = jsonify({ "message": "Logged out successfully" })
+    
+    # Overwrite the refresh cookie with Max-Age = 0 to delete it
+    response.set_cookie(
+        "refresh_token",
+        "",
+        httponly=True,
+        secure=True,
+        samesite="Strict",
+        max_age=0
+    )
+
+    return response
 
 @app.route("/api/bookings", methods=["POST"])
 @token_required
