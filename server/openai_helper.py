@@ -14,11 +14,18 @@ def generate_followup_questions_latex(latex_input):
     prompt = f"""
 You are a helpful maths tutor. Based on the session notes below (in LaTeX), generate the content for a worksheet **only inside** the document — do not include \\documentclass, \\begin{{document}}, or \\end{{document}}.
 
-Requirements:
-- Around 10 GCSE-style exam questions that reinforce the concepts covered
-- Group questions by topic, progressing from easier to harder
-- Add a 'Bonus Question' for each topic
-- Include an 'Answers' section at the end
+The session notes were hand written by me, and converted to Latex. I would like you to generate follow-up questions for a worksheet based on the notes.
+
+Given the following session notes, generate around 10 new GCSE-level maths exam style practice questions that reinforce the concepts discussed.
+The questions should be:
+- new
+- similar difficulty to the material in the notes
+- similar to past paper questions on the topic.
+
+Here is how I would like you to structure it:
+- Question sections for each topic discussed, progressing from easier to harder
+- Bonus question for each topic (harder question)
+- Answers section, with working out for each question
 - Use clean, valid LaTeX (no explanations, only the worksheet body)
 - Use only basic math packages (like amsmath), and avoid packages like tikz or fancyhdr.
 
