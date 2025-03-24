@@ -1,16 +1,49 @@
-// src/routes/AdminRoute.jsx (or wherever you're storing it)
-
+import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { getTokenFromCookie, isTokenValid, isUserAdmin } from "../services/auth";
+import axios from "../services/axios";
+import {
+  getAccessToken,
+  setAccessToken,
+  isTokenValid,
+  isUserAdmin
+} from "../services/auth";
 
 export default function AdminRoute({ children }) {
-  const token = getTokenFromCookie();
+  const [loading, setLoading] = useState(true);
+  const [authorized, setAuthorized] = useState(false);
 
-  if (!token || !isTokenValid(token)) {
-    return <Navigate to="/auth" replace />;
+  useEffect(() => {
+    const checkAdminAccess = async () => {
+      const token = getAccessToken();
+
+      if (token && isTokenValid(token)) {
+        setAuthorized(isUserAdmin());
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const res = await axios.post("/refresh", {}, { withCredentials: true });
+        const newToken = res.data.access_token;
+        setAccessToken(newToken);
+
+        setAuthorized(isUserAdmin()); // Recheck now that token is fresh
+      } catch (err) {
+        console.warn("🔐 Admin token refresh failed.");
+        setAuthorized(false);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAdminAccess();
+  }, []);
+
+  if (loading) {
+    return <div>Loading...</div>;
   }
 
-  if (!isUserAdmin()) {
+  if (!authorized) {
     return <Navigate to="/dashboard" replace />;
   }
 
