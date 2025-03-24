@@ -15,7 +15,7 @@ def generate_followup_questions_latex(latex_input):
 You are a helpful maths tutor. Based on the session notes below (in LaTeX), generate the content for a worksheet **only inside** the document — do not include \\documentclass, \\begin{{document}}, or \\end{{document}}.
 
 The session notes were hand written by me, and converted to Latex. Bear in mind that the notes are not perfect, and may contain errors or omissions.
-Given the following session notes, generate around 10 new GCSE-level maths exam style practice questions that reinforce the concepts discussed.
+Given the following session notes, generate around 10 new GCSE-level maths exam style practice questions for each concept, that reinforce the concepts discussed.
 The questions should be:
 - new
 - similar difficulty to the material in the notes
