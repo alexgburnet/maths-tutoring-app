@@ -1,13 +1,14 @@
 // src/services/axios.js
 import axios from 'axios';
-import { getTokenFromCookie } from './auth';
+import { getAccessToken } from './auth';
 
 const instance = axios.create({
-  baseURL: 'https://localhost:5000/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+  withCredentials: true,
 });
 
 instance.interceptors.request.use((config) => {
-  const token = getTokenFromCookie();
+  const token = getAccessToken();
   if (token) {
     config.headers.Authorization = token;
   }
