@@ -546,7 +546,6 @@ def delete_notes(current_user, booking_id):
         return jsonify({"error": str(e)}), 500
     
 @app.route("/api/monzo-auth")
-@admin_required
 def monzo_auth():
     client_id = os.getenv("MONZO_CLIENT_ID")
     redirect_uri = "https://tutoring.alexbur.net/api/callback"
