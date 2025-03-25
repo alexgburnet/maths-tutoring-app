@@ -5,15 +5,28 @@ import NotFound from "./components/NotFound";
 import AuthPage from "./components/AuthPage/AuthPage";
 import MainLayout from "./components/MainLayout/MainLayout";
 
+import ProtectedRoute from "./components/ProtectedRoute";
+import AdminRoute from "./components/AdminRoute";
+
 function App() {
   
     return (
       <Router>
         <Routes>
           <Route path="/" element={<HomePage />} />
+
           <Route path="/login" element={<AuthPage />} />
+
           <Route path="/signup" element={<AuthPage />} />
-          <Route path="/dashboard" element={<MainLayout />} />
+
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <MainLayout />
+              </ProtectedRoute>}
+          />
+
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Router>

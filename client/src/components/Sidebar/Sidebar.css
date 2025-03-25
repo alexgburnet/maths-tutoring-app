@@ -159,3 +159,41 @@
 .sidebar-toggle-btn.inside {
   left: 250px; /* Sidebar width (310px) - padding */
 }
+
+.dropdown-menu {
+  position: absolute;
+  top: 80px;
+  left: 1.5rem;
+  background: white;
+  padding: 1rem;
+  border-radius: 12px;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  min-width: 220px;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.5rem 0.8rem;
+  color: #333;
+  text-decoration: none;
+  font-size: 1rem;
+  font-weight: 500;
+  border-radius: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  width: 100%;
+  text-align: left;
+  transition: background 0.2s ease;
+}
+
+.dropdown-item:hover {
+  background: rgba(0, 0, 0, 0.05);
+}

@@ -100,3 +100,8 @@
     margin-bottom: -0.5rem;
     text-align: left;
   }
+
+  .error-message {
+    color: var(--color-error);
+    font-size: 0.9rem;
+  }

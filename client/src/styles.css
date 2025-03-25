@@ -22,6 +22,8 @@ body, #root{
   
     --color-accent: #0f172a;
     --color-border: #d1d1d1;
+
+    --color-error: #dc2626;
   
     /* Gradient background colors */
     --gradient-start: rgb(247, 247, 247);
