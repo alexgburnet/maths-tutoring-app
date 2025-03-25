@@ -223,3 +223,8 @@
   background-color: var(--color-primary);
   color: white;
 }
+
+.sidebar-link.active-link:hover {
+  background-color: var(--color-primary);
+  opacity: 0.8;
+}

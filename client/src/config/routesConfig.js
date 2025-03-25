@@ -1,23 +1,41 @@
 // routesConfig.js
-import { FaTachometerAlt, FaCalendarAlt, FaShieldAlt } from "react-icons/fa";
+import { FiHome, FiBookmark, FiCalendar, FiShield, FiBook, FiList } from "react-icons/fi";
 
 export const ROUTES = [
   {
     label: "Dashboard",
     path: "/dashboard",
     roles: ["user", "admin"],
-    icon: FaTachometerAlt, // Not JSX
+    icon: FiHome, // Not JSX
   },
   {
-    label: "Bookings",
-    path: "/bookings",
+    label: "Book A Session",
+    path: "/MakeBooking",
     roles: ["user", "admin"],
-    icon: FaCalendarAlt,
+    icon: FiBookmark,
+  },
+  {
+    label: "Your Bookings",
+    path: "/YourBookings",
+    roles: ["user", "admin"],
+    icon: FiCalendar,
+  },
+  {
+    label: "Notes",
+    path: "/Notes",
+    roles: ["user", "admin"],
+    icon: FiBook,
+  },
+  {
+    label: "Worksheets",
+    path: "/Worksheets",
+    roles: ["user","admin"],
+    icon: FiList,
   },
   {
     label: "Admin Panel",
     path: "/admin",
     roles: ["admin"],
-    icon: FaShieldAlt,
+    icon: FiShield,
   },
 ];

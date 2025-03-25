@@ -1,4 +1,4 @@
-import './Bookings.css';
+import './YourBookings.css';
 
 export default function Bookings() {
 

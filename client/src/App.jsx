@@ -4,9 +4,12 @@ import HomePage from "./components/HomePage/HomePage";
 import NotFound from "./components/NotFound";
 import AuthPage from "./components/AuthPage/AuthPage";
 import Dashboard from "./components/Dashboard/Dashboard";
-import Bookings from "./components/Bookings/Bookings";
+import YourBookings from "./components/Your Bookings/YourBookings";
 import Settings from "./components/Settings/Settings";
 import AdminPanel from "./components/AdminPanel/AdminPanel";
+import MakeBooking from "./components/MakeBooking/MakeBooking";
+import Notes from "./components/Notes/Notes";
+import Worksheets from "./components/Worksheets/Worksheets";
 
 import MainLayout from "./components/MainLayout/MainLayout";
 
@@ -32,7 +35,10 @@ function App() {
             }
           >
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/bookings" element={<Bookings />} />
+            <Route path="/MakeBooking" element={<MakeBooking />} />
+            <Route path="/YourBookings" element={<YourBookings />} />
+            <Route path="/Notes" element={<Notes />} />
+            <Route path="/Worksheets" element={<Worksheets />} />
             <Route path="/settings" element={<Settings />} />
             {/* You can keep adding more protected routes here */}
           </Route>
