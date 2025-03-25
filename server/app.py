@@ -272,15 +272,24 @@ def refresh():
 
     try:
         payload = pyjwt.decode(refresh_token, SECRET_KEY, algorithms=["HS256"])
+        user_id = payload["user_id"]
+
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({"error": "User not found"}), 401
+
         new_access_token = pyjwt.encode({
-            "user_id": payload["user_id"],
+            "user_id": user.id,
+            "is_admin": user.is_admin,
+            "name": user.name,
+            "surname": user.surname,
             "exp": datetime.utcnow() + timedelta(minutes=15),
         }, SECRET_KEY, algorithm="HS256")
 
         return jsonify({ "access_token": new_access_token })
 
     except Exception as e:
-        return jsonify({ "error": "Invalid refresh token" }), 401
+        return jsonify({ "error": f"Invalid refresh token: {str(e)}" }), 401
     
 @app.route("/api/logout", methods=["POST"])
 def logout():
