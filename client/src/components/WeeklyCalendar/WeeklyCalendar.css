@@ -1,0 +1,91 @@
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1.5rem;
+    padding: 1rem;
+  }
+  
+  .day-column {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .day-header {
+    font-weight: 600;
+    font-size: 1.1rem;
+    text-align: center;
+    margin-bottom: 0.75rem;
+  }
+  
+  .slots {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .slot-card {
+    padding: 0.75rem;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+    font-size: 0.95rem;
+  }
+  
+  .slot-card.available {
+    background-color: #e0f7fa;
+  }
+  
+  .slot-card.booked {
+    background-color: #fce4ec;
+    opacity: 0.8;
+  }
+  
+  .slot-time {
+    font-weight: 600;
+  }
+  
+  .student-name {
+    font-size: 0.85rem;
+    color: #555;
+    margin-top: 0.2rem;
+  }
+  
+  .no-slots {
+    font-size: 0.85rem;
+    color: #aaa;
+    text-align: center;
+  }
+  
+  @media (max-width: 768px) {
+    .calendar-grid {
+      display: flex;
+      overflow-x: auto;
+      padding-bottom: 1rem;
+    }
+  
+    .day-column {
+      min-width: 200px;
+      margin-right: 1rem;
+    }
+  }
+
+  .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1.5rem;
+    padding: 1rem;
+  }
+  
+  /* Mobile (≤768px): 1 column, vertical scroll */
+  @media (max-width: 768px) {
+    .calendar-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+  
+    .day-column {
+      width: 100%;
+    }
+  }
