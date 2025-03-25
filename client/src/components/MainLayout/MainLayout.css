@@ -36,10 +36,6 @@
       transform: translateX(0);
     }
   
-    .main-content {
-      margin-left: 250px;
-    }
-  
     .menu-btn {
       display: none;
     }
