@@ -1,46 +1,24 @@
 .layout {
-    display: flex;
+  display: flex;
+  position: relative;
+}
+
+.main-content {
+  flex: 1;
+  margin-left: 0;
+  transition: margin-left 0.3s ease;
+}
+
+.main-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+/* When sidebar is open on desktop, push content */
+@media (min-width: 768px) {
+  .main-content.sidebar-open {
+    margin-left: 310px; /* match sidebar width */
   }
-  
-  /* Main content adjusts only on desktop */
-  .main-content {
-    flex: 1;
-    margin-left: 0;
-    transition: margin-left 0.3s ease;
-  }
-  
-  .main-header {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 1rem;
-    background: white;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
-  }
-  
-  .menu-btn {
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    cursor: pointer;
-  }
-  
-  /* Desktop view */
-  @media (min-width: 768px) {
-    .sidebar {
-      transform: translateX(0);
-      position: relative;
-    }
-  
-    .sidebar.open {
-      transform: translateX(0);
-    }
-  
-    .menu-btn {
-      display: none;
-    }
-  
-    .sidebar .close-btn {
-      display: none;
-    }
-  }
+}

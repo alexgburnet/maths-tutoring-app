@@ -21,13 +21,15 @@ body, #root{
     --color-secondary-hover: #e2e8f0;
   
     --color-accent: #0f172a;
-    --color-border: #cbd5e1;
+    --color-border: #d1d1d1;
   
     /* Gradient background colors */
-    --gradient-start: #c3d1ff;
-    --gradient-end: #ffdada;
+    --gradient-start: rgb(247, 247, 247);
+    --gradient-end: rgb(247, 247, 247);
 
     --gradient-background: linear-gradient(to bottom right, var(--gradient-start), var(--gradient-end));
+
+    --menu-bar-colour: rgb(251, 241, 246);
 }
   
 *,
