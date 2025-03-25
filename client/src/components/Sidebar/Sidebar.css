@@ -228,3 +228,9 @@
   background-color: var(--color-primary);
   opacity: 0.8;
 }
+
+.username {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}

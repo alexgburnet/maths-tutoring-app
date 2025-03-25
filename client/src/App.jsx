@@ -10,6 +10,7 @@ import AdminPanel from "./components/AdminPanel/AdminPanel";
 import MakeBooking from "./components/MakeBooking/MakeBooking";
 import Notes from "./components/Notes/Notes";
 import Worksheets from "./components/Worksheets/Worksheets";
+import ChangePassword from "./components/ChangePassword/ChangePassword";
 
 import MainLayout from "./components/MainLayout/MainLayout";
 
@@ -35,11 +36,12 @@ function App() {
             }
           >
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/MakeBooking" element={<MakeBooking />} />
-            <Route path="/YourBookings" element={<YourBookings />} />
-            <Route path="/Notes" element={<Notes />} />
-            <Route path="/Worksheets" element={<Worksheets />} />
+            <Route path="/make-booking" element={<MakeBooking />} />
+            <Route path="/your-bookings" element={<YourBookings />} />
+            <Route path="/notes" element={<Notes />} />
+            <Route path="/worksheets" element={<Worksheets />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/change-password" element={<ChangePassword />} />
             {/* You can keep adding more protected routes here */}
           </Route>
 

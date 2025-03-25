@@ -5,7 +5,11 @@ import AuthService from '../../services/AuthService';
 import { NavLink } from "react-router-dom";
 
 import './Sidebar.css';
-import { FaUserCircle, FaBell, FaThLarge, FaTasks, FaCalendarAlt, FaStickyNote, FaStopwatch, FaChartLine, FaClock, FaCog, FaCheckCircle, FaUsers, FaBars, FaTimes } from 'react-icons/fa';
+import { FiChevronDown } from 'react-icons/fi';
+import { HiOutlineCog6Tooth } from "react-icons/hi2";
+import { RxAvatar } from "react-icons/rx";
+import { FaCog, FaUsers } from 'react-icons/fa';
+import { FiSidebar } from "react-icons/fi";
 import { FaLock, FaSignOutAlt } from 'react-icons/fa';
 
 
@@ -21,6 +25,19 @@ export default function Sidebar({ isOpen, toggleSidebar, routes }) {
     console.log('Logging out...');
     await AuthService.logout();
     window.location.href = '/';
+  };
+
+  const handleDropdownNav = () => {
+    setShowDropdown(false);
+    if (window.innerWidth < 768) {
+      toggleSidebar();
+    }
+  };
+
+  const handleMobilenav = () => {
+    if (window.innerWidth < 768) {
+      toggleSidebar();
+    }
   };
 
   useEffect(() => {
@@ -57,7 +74,7 @@ export default function Sidebar({ isOpen, toggleSidebar, routes }) {
         className={`sidebar-toggle-btn ${isOpen ? 'inside' : 'outside'}`}
         onClick={toggleSidebar}
       >
-        {isOpen ? <FaTimes size={25}/> : <FaBars size={25}/>}
+        <FiSidebar size={20}/>
       </button>
 
       {/* Sidebar */}
@@ -66,18 +83,28 @@ export default function Sidebar({ isOpen, toggleSidebar, routes }) {
           {/* Top Profile Section */}
           <div className="sidebar-top">
             <div className="profile" onClick={() => setShowDropdown(prev => !prev)}>
-              <FaUserCircle className="avatar" />
-              <span className="username">{name} {surname} ▾</span>
+              <RxAvatar className="avatar" />
+              <span className="username">{name} {surname} <FiChevronDown /></span>
             </div>
 
             {showDropdown && (
               <div className="dropdown-menu">
-                <a href="/settings" className="dropdown-item">
+                <NavLink
+                  to="/settings"
+                  className="dropdown-item"
+                  onClick={handleDropdownNav}
+                >
                   <FaCog /> Settings
-                </a>
-                <a href="/change-password" className="dropdown-item">
+                </NavLink>
+
+                <NavLink
+                  to="/change-password"
+                  className="dropdown-item"
+                  onClick={handleDropdownNav}
+                >
                   <FaLock /> Change Password
-                </a>
+                </NavLink>
+
                 <button className="dropdown-item" onClick={handleLogout}>
                   <FaSignOutAlt /> Sign out
                 </button>
@@ -91,7 +118,8 @@ export default function Sidebar({ isOpen, toggleSidebar, routes }) {
           <div className="section">
             <div className="section-header">
               <FaUsers className="section-icon" />
-              <span>{name} ▾</span>
+              <span>{name}</span>
+              <FiChevronDown />
             </div>
             <ul className="sidebar-links">
               {routes.map(({ path, label, icon: Icon }) => (
@@ -101,6 +129,7 @@ export default function Sidebar({ isOpen, toggleSidebar, routes }) {
                     className={({ isActive }) =>
                       isActive ? 'sidebar-link active-link' : 'sidebar-link'
                     }
+                    onClick={handleMobilenav}
                   >
                     <Icon />
                     <span>{label}</span>
@@ -114,8 +143,9 @@ export default function Sidebar({ isOpen, toggleSidebar, routes }) {
           <NavLink
             className="settings-link"
             to="/settings"
+            onClick={handleMobilenav}
           >
-            <p><FaCog /> Settings</p>
+            <p><HiOutlineCog6Tooth /> Settings</p>
           </NavLink>
         </div>
       </aside>
