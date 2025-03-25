@@ -1,51 +1,37 @@
-import { useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { FaGraduationCap } from "react-icons/fa";
 import "./HomePage.css";
 
 export default function HomePage() {
-  const dockRef = useRef(null);
-
-  useEffect(() => {
-    const letters = dockRef.current.querySelectorAll(".letter");
-
-    const handleMouseMove = (e) => {
-      letters.forEach((letter) => {
-        const rect = letter.getBoundingClientRect();
-        const letterX = rect.left + rect.width / 2;
-        const distance = Math.abs(e.clientX - letterX);
-        const maxDistance = 200; // px
-        const scale = Math.max(1, 1.5 - distance / maxDistance);
-        letter.style.transform = `scale(${scale})`;
-      });
-    };
-
-    const resetLetters = () => {
-      letters.forEach((letter) => {
-        letter.style.transform = "scale(1)";
-      });
-    };
-
-    const dock = dockRef.current;
-    dock.addEventListener("mousemove", handleMouseMove);
-    dock.addEventListener("mouseleave", resetLetters);
-
-    return () => {
-      dock.removeEventListener("mousemove", handleMouseMove);
-      dock.removeEventListener("mouseleave", resetLetters);
-    };
-  }, []);
+  const navigate = useNavigate();
 
   return (
-    <div className="home-page">
-      <div className="text-container">
-        <h1 className="dock-text" ref={dockRef}>
-          {"Alex Burnet".split("").map((char, index) => (
-            <span key={index} className="letter">
-              {char}
-            </span>
-          ))}
-        </h1>
-        <h2>Tutoring</h2>
-      </div>
+    <div className="home-wrapper">
+      <nav className="navbar">
+        <div className="navbar-left">
+        <FaGraduationCap size={20} />
+          <span className="brand">alexbur.net</span>
+        </div>
+        <div className="navbar-right">
+          <button onClick={() => navigate("/login")} className="nav-btn">Sign In</button>
+          <button onClick={() => navigate("/signup")} className="nav-btn secondary">Sign Up</button>
+        </div>
+      </nav>
+
+      <section className="hero">
+        <div className="hero-content">
+          <h1 className="main-title">One-to-One Maths Tutoring</h1>
+          <p className="subtitle">Clear explanations. Personalised support. Real results.</p>
+          <div className="cta">
+            <button onClick={() => navigate("/dashboard")}>Book a Session</button>
+          </div>
+          <div className="features">
+            <p>📄 Notes uploaded after each lesson</p>
+            <p>🧠 AI-generated follow-up questions</p>
+            <p>🎥 Zoom sessions scheduled automatically</p>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
