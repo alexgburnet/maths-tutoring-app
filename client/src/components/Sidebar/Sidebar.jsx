@@ -2,13 +2,14 @@ import React, { use } from 'react';
 import { useState, useEffect } from 'react';
 import UserService from '../../services/UserService';
 import AuthService from '../../services/AuthService';
+import { NavLink } from "react-router-dom";
 
 import './Sidebar.css';
 import { FaUserCircle, FaBell, FaThLarge, FaTasks, FaCalendarAlt, FaStickyNote, FaStopwatch, FaChartLine, FaClock, FaCog, FaCheckCircle, FaUsers, FaBars, FaTimes } from 'react-icons/fa';
 import { FaLock, FaSignOutAlt } from 'react-icons/fa';
 
 
-export default function Sidebar({ isOpen, toggleSidebar }) {
+export default function Sidebar({ isOpen, toggleSidebar, routes }) {
   const [name, setname] = useState('Loading...');
   const [surname, setSurname] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
@@ -84,6 +85,8 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
             )}
           </div>
 
+          <hr className="horizontal-line"/>
+
           {/* Navigation */}
           <div className="section">
             <div className="section-header">
@@ -91,14 +94,29 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
               <span>{name} ▾</span>
             </div>
             <ul className="sidebar-links">
-              <li className="active"><a href="/dashboard"><FaThLarge /> Dashboard</a></li>
+              {routes.map(({ path, label, icon: Icon }) => (
+                <li key={path}>
+                  <NavLink
+                    to={path}
+                    className={({ isActive }) =>
+                      isActive ? 'sidebar-link active-link' : 'sidebar-link'
+                    }
+                  >
+                    <Icon />
+                    <span>{label}</span>
+                  </NavLink>
+                </li>
+              ))}
             </ul>
           </div>
 
           {/* Footer */}
-          <div className="settings-link">
-            <a href="/settings"><FaCog /> Settings</a>
-          </div>
+          <NavLink
+            className="settings-link"
+            to="/settings"
+          >
+            <p><FaCog /> Settings</p>
+          </NavLink>
         </div>
       </aside>
     </>

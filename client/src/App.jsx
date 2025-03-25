@@ -3,6 +3,11 @@ import { BrowserRouter as Router, Route, Routes, Link } from "react-router-dom";
 import HomePage from "./components/HomePage/HomePage";
 import NotFound from "./components/NotFound";
 import AuthPage from "./components/AuthPage/AuthPage";
+import Dashboard from "./components/Dashboard/Dashboard";
+import Bookings from "./components/Bookings/Bookings";
+import Settings from "./components/Settings/Settings";
+import AdminPanel from "./components/AdminPanel/AdminPanel";
+
 import MainLayout from "./components/MainLayout/MainLayout";
 
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -20,12 +25,29 @@ function App() {
           <Route path="/signup" element={<AuthPage />} />
 
           <Route
-            path="/dashboard"
             element={
               <ProtectedRoute>
                 <MainLayout />
-              </ProtectedRoute>}
-          />
+              </ProtectedRoute>
+            }
+          >
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/bookings" element={<Bookings />} />
+            <Route path="/settings" element={<Settings />} />
+            {/* You can keep adding more protected routes here */}
+          </Route>
+
+          {/* Admin-only Routes */}
+          <Route
+            element={
+              <AdminRoute>
+                <MainLayout />
+              </AdminRoute>
+            }
+          >
+            <Route path="/admin" element={<AdminPanel />} />
+            {/* More admin-only pages can go here */}
+          </Route>
 
           <Route path="*" element={<NotFound />} />
         </Routes>
