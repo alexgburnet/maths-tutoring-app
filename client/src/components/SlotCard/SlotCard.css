@@ -1,6 +1,7 @@
 .slot-card {
     padding: 0.75rem;
     border-radius: 10px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
     cursor: pointer;
     transition: all 0.2s ease;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
@@ -8,11 +9,11 @@
   }
   
   .slot-card.available {
-    background-color: #e0f7fa;
+    background-color: var(--color-slot-available);
   }
   
   .slot-card.booked {
-    background-color: #fce4ec;
+    background-color: var(--color-slot-booked);
     opacity: 0.8;
   }
   
@@ -34,8 +35,14 @@
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
   }
+
   
   .slot-card:active {
     transform: scale(0.97);
   }
   
+  .slot-card.booked:hover {
+    transform: none;
+    box-shadow: none;
+    cursor: not-allowed;
+  }

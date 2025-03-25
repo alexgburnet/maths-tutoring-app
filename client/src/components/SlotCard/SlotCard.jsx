@@ -6,9 +6,7 @@ export default function SlotCard({ slot }) {
 
   const handleClick = () => {
     if (!isBooked) {
-      alert(`Booking slot at ${slot.startTime}`);
-    } else {
-      alert(`This slot is booked by ${slot.user.name}`);
+      // Logic here!
     }
   };
 

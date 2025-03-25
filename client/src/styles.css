@@ -24,6 +24,9 @@ body, #root{
     --color-border: #d1d1d1;
 
     --color-error: #dc2626;
+
+    --color-slot-available: #ffffff;
+    --color-slot-booked: var(--menu-bar-colour);
   
     /* Gradient background colors */
     --gradient-start: rgb(247, 247, 247);

@@ -2,7 +2,6 @@
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     gap: 1.5rem;
-    padding: 1rem;
   }
   
   .day-column {
@@ -11,7 +10,7 @@
   }
   
   .day-header {
-    font-weight: 600;
+    font-weight: 400;
     font-size: 1.1rem;
     text-align: center;
     margin-bottom: 0.75rem;
@@ -21,28 +20,6 @@
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
-  }
-  
-  .slot-card {
-    padding: 0.75rem;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
-    font-size: 0.95rem;
-  }
-  
-  .slot-card.available {
-    background-color: #e0f7fa;
-  }
-  
-  .slot-card.booked {
-    background-color: #fce4ec;
-    opacity: 0.8;
-  }
-  
-  .slot-time {
-    font-weight: 600;
   }
   
   .student-name {
@@ -75,6 +52,7 @@
     grid-template-columns: repeat(5, 1fr);
     gap: 1.5rem;
     padding: 1rem;
+    width: 100%;
   }
   
   /* Mobile (≤768px): 1 column, vertical scroll */
@@ -89,3 +67,46 @@
       width: 100%;
     }
   }
+
+  .date-selector {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+  }
+
+  .calendar-separator {
+    border: none;
+    background-color: rgb(226, 226, 226);
+    height: 1px;
+    margin: 0.5rem 0;
+    width: 100%;
+  }
+
+  .calendar-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 1rem;
+  }
+
+  .date-selector-button {
+    background: none;
+    border-radius: 10px;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+}
+
+.date-selector-button:hover {
+    background-color: rgb(0, 0, 0, 0.1);
+  }
+
+  .date-selector-button:active {
+    background: rgb(0, 0, 0, 0.15);
+  }
+
+.calendar-title {
+    font-weight: 400;
+}
