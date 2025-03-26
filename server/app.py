@@ -424,13 +424,13 @@ def get_all_slots(current_user):
 
         query = AvailableSlot.query
 
-        if start and end:
+        if start:
             start_dt = datetime.strptime(start, "%Y-%m-%d")
-            end_dt = datetime.strptime(end, "%Y-%m-%d") + timedelta(days=1)  # make it inclusive
-            query = query.filter(and_(
-                AvailableSlot.start_time >= start_dt,
-                AvailableSlot.start_time < end_dt
-            ))
+            query = query.filter(AvailableSlot.start_time >= start_dt)
+
+        if end:
+            end_dt = datetime.strptime(end, "%Y-%m-%d") + timedelta(days=1)  # make inclusive
+            query = query.filter(AvailableSlot.start_time < end_dt)
 
         slots = query.order_by(AvailableSlot.start_time).all()
         return jsonify([s.to_dict() for s in slots])
@@ -482,7 +482,7 @@ def delete_booking(current_user, booking_id):
 def get_all_users(current_user):
     users = User.query.all()
     return jsonify([
-        {"id": u.id, "email": u.email, "is_admin": u.is_admin}
+        {"id": u.id, "name": u.name, "surname": u.surname, "email": u.email, "is_admin": u.is_admin}
         for u in users
     ])
 
@@ -728,3 +728,43 @@ def get_bookings_with_notes(current_user):
 def get_bookings_with_followups(current_user):
     bookings = Booking.query.filter_by(user_id=current_user.id).filter(Booking.followup_filename.isnot(None)).order_by(desc(Booking.scheduled_time)).all()
     return jsonify([b.to_dict() for b in bookings])
+
+@app.route("/api/admin/unassign-slot/<int:slot_id>", methods=["POST"])
+@admin_required
+def unassign_slot(current_user, slot_id):
+    slot = AvailableSlot.query.get_or_404(slot_id)
+    if not slot.booked or not slot.booking:
+        return jsonify({"error": "Slot is not currently booked"}), 400
+
+    booking = slot.booking
+    if booking.zoom_meeting_id:
+        try:
+            delete_zoom_meeting(booking.zoom_meeting_id)
+        except Exception as e:
+            print(f"⚠️ Failed to delete Zoom meeting: {e}")
+    
+    db.session.delete(booking)
+    slot.booked = False
+    db.session.commit()
+
+    return jsonify({"message": "Slot unassigned and booking deleted"})
+
+@app.route("/api/admin/generate-followup/<int:booking_id>", methods=["POST"])
+@admin_required
+def regenerate_followup(current_user, booking_id):
+    booking = Booking.query.get_or_404(booking_id)
+    if not booking.notes_filename:
+        return jsonify({"error": "No notes file available for this booking"}), 400
+
+    try:
+        file_path = os.path.join(app.config["UPLOAD_FOLDER"], booking.notes_filename)
+        latex_text = extract_latex_from_pdf(file_path)
+        followup_latex = generate_followup_questions_latex(latex_text)
+        followup_filename = secure_filename(f"{booking_id}_{uuid.uuid4().hex[:8]}_regenerated.pdf")
+        followup_path = os.path.join(UPLOAD_FOLDER, followup_filename)
+        render_latex_to_pdf(followup_latex, followup_path)
+        booking.followup_filename = followup_filename
+        db.session.commit()
+        return jsonify({"message": "Follow-up regenerated"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

@@ -2,6 +2,17 @@
 import axios from './axios';
 
 class BookingService {
+
+  async getAllBookings() {
+    const res = await axios.get('/admin/bookings');
+    return res.data;
+  }
+
+  async markBookingPaid(bookingId) {
+    const res = await axios.post(`/admin/mark-paid/${bookingId}`);
+    return res.data;
+  }
+
   async getUserBookings() {
     const res = await axios.get('/bookings');
     return res.data;

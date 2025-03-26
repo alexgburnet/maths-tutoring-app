@@ -1,3 +1,4 @@
+import axios from './axios';
 import { getAccessToken } from "./auth";
 
 class UserService {
@@ -77,6 +78,11 @@ class UserService {
 
         return await res.json();
     }
+
+    async getAllUsers() {
+        const res = await axios.get('/admin/users');
+        return res.data;
+      }
 }
 
 export default new UserService();
