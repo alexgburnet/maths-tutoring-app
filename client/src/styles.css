@@ -34,7 +34,8 @@ body, #root{
 
     --gradient-background: linear-gradient(to bottom right, var(--gradient-start), var(--gradient-end));
 
-    --menu-bar-colour: rgb(251, 241, 246);
+    /* --menu-bar-colour: rgb(251, 241, 246); */
+    --menu-bar-colour: rgb(236, 238, 255);
 }
   
 *,
