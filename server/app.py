@@ -409,22 +409,27 @@ def get_booking(booking_id):
 def delete_booking(current_user, booking_id):
     booking = Booking.query.get_or_404(booking_id)
 
-    print("Zoom meeting ID:", booking.zoom_meeting_id)
-
-    # Ensure only the owner can delete
+    # Ensure only the owner or an admin can delete
     if booking.user_id != current_user.id and not current_user.is_admin:
         return jsonify({"error": "Unauthorized"}), 403
 
+    print("Zoom meeting ID:", booking.zoom_meeting_id)
+
+    # Delete Zoom meeting if it exists
     if booking.zoom_meeting_id:
         try:
             delete_zoom_meeting(booking.zoom_meeting_id)
         except Exception as e:
-            print(f"Warning: Failed to delete Zoom meeting: {e}")
+            print(f"⚠️ Warning: Failed to delete Zoom meeting: {e}")
+
+    # Unmark slot as booked
+    if booking.slot:
+        booking.slot.booked = False  # ✅ Make slot available again
 
     db.session.delete(booking)
     db.session.commit()
 
-    return jsonify({"message": "Booking deleted"})
+    return jsonify({"message": "Booking deleted and slot made available again"})
 
 @app.route("/api/admin/users", methods=["GET"])
 @admin_required
