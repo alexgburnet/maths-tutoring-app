@@ -21,7 +21,7 @@
   
   /* FINAL animated position */
   .animated-booking-form.animate {
-    top: 50% !important;            /* Move it down below the slot */
+    top: 60% !important;            /* Move it down below the slot */
     left: 50% !important;             /* Centered horizontally */
     transform: translateX(-50%) !important;
     width: 400px !important;
