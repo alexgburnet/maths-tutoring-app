@@ -670,3 +670,15 @@ def monzo_auth():
         f"&response_type=code&state={state}"
     )
     return f'<a href="{auth_url}">Click here to authorize Monzo</a>'
+
+@app.route("/api/bookings/with-notes", methods=["GET"])
+@token_required
+def get_bookings_with_notes(current_user):
+    bookings = Booking.query.filter_by(user_id=current_user.id).filter(Booking.notes_filename.isnot(None)).order_by(desc(Booking.scheduled_time)).all()
+    return jsonify([b.to_dict() for b in bookings])
+
+@app.route("/api/bookings/with-followups", methods=["GET"])
+@token_required
+def get_bookings_with_followups(current_user):
+    bookings = Booking.query.filter_by(user_id=current_user.id).filter(Booking.followup_filename.isnot(None)).order_by(desc(Booking.scheduled_time)).all()
+    return jsonify([b.to_dict() for b in bookings])
