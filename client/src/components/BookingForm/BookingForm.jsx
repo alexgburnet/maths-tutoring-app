@@ -36,21 +36,21 @@ export default function BookingForm({ slot, onClose, onBooked }) {
       <p><strong>Date:</strong> {slot.date}</p>
       <p><strong>Time:</strong> {slot.startTime}</p>
 
-      <label htmlFor="topic">Topic</label>
       <input
         id="topic"
         type="text"
         value={topic}
         onChange={(e) => setTopic(e.target.value)}
-        placeholder="e.g. Trigonometry, Algebra..."
+        placeholder="Input your topic here"
         required
+        className='topic-input'
       />
 
       {error && <p className="error-text">{error}</p>}
 
       <div className="booking-actions">
-        <button onClick={onClose} disabled={loading}>Close</button>
-        <button onClick={handleBooking} disabled={loading || !topic.trim()}>
+        <button onClick={onClose} disabled={loading} className='close'>Close</button>
+        <button onClick={handleBooking} disabled={loading || !topic.trim()} className='book'>
           {loading ? 'Booking...' : 'Book'}
         </button>
       </div>

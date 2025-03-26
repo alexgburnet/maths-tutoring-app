@@ -1,37 +1,43 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { GoChevronRight, GoChevronLeft } from "react-icons/go";
 import SlotCard from '../SlotCard/SlotCard';
 import BookingForm from '../BookingForm/BookingForm';
 import Modal from '../Modal/Modal';
 import SlotService from '../../services/SlotService';
+import AnimatedBookingForm from '../AnimatedBookingForm/AnimatedBookingForm';
 
 import './WeeklyCalendar.css';
 
 export default function WeeklyCalendar() {
   const [currentMonday, setCurrentMonday] = useState(getMonday());
-  const [slots, setSlots] = useState([]); // ✅ internal state now
+  const [slots, setSlots] = useState([]);
   const [slideDirection, setSlideDirection] = useState('');
   const [selectedSlot, setSelectedSlot] = useState(null);
+  const [selectedSlotRect, setSelectedSlotRect] = useState(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
+  const contentRef = useRef();
+
   useEffect(() => {
+    fetchSlots();
+  }, [currentMonday]);
+
   const fetchSlots = async () => {
     const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // strip time
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const weekStart = currentMonday < today ? today : currentMonday;
-
+  
     const weekEnd = new Date(currentMonday);
     weekEnd.setDate(weekEnd.getDate() + 4);
-
-    // 🛑 If the week is entirely in the past, do not fetch
+  
     if (weekStart > weekEnd) {
       setSlots([]);
       return;
     }
-
+  
     const start = weekStart.toISOString().split('T')[0];
     const end = weekEnd.toISOString().split('T')[0];
-
+  
     try {
       const data = await SlotService.getAvailableSlots(start, end);
       setSlots(data);
@@ -39,9 +45,6 @@ export default function WeeklyCalendar() {
       console.error('Failed to fetch slots', err);
     }
   };
-
-  fetchSlots();
-}, [currentMonday]);
 
   function getMonday(date = new Date()) {
     const d = new Date(date);
@@ -100,10 +103,13 @@ export default function WeeklyCalendar() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const closeForm = () => setSelectedSlot(null);
+  const closeForm = () => {
+    setSelectedSlot(null);
+    setSelectedSlotRect(null);
+  };
 
   return (
-    <div className='calendar-container'>
+    <div className='calendar-container' ref={contentRef}>
       <div className='date-selector'>
         <button onClick={goToPreviousWeek} className='date-selector-button'>
           <GoChevronLeft size={25} />
@@ -131,27 +137,35 @@ export default function WeeklyCalendar() {
             </h3>
             <div className="slots">
               {slotsForDate(date).length > 0 ? (
-                slotsForDate(date).map(slot => (
+                slotsForDate(date).map(slot => {
+                  const ref = React.createRef();
+                  return (
                     <SlotCard
-                        key={slot.id}
-                        slot={{
-                            ...slot,
-                            id: slot.id,
-                            date: new Date(slot.start_time).toLocaleDateString('en-GB', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: '2-digit',
-                            }),
-                            startTime: new Date(slot.start_time).toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            }),
-                            startIso: slot.start_time, // ✅ for backend
-                        }}
-                        onSelect={setSelectedSlot}
-                        />
-                    ))
-                ) : (
+                      key={slot.id}
+                      ref={ref}
+                      slot={{
+                        ...slot,
+                        id: slot.id,
+                        date: new Date(slot.start_time).toLocaleDateString('en-GB', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: '2-digit',
+                        }),
+                        startTime: new Date(slot.start_time).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        }),
+                        startIso: slot.start_time,
+                      }}
+                      onSelect={(slot) => {
+                        const rect = ref.current.getBoundingClientRect();
+                        setSelectedSlot(slot);
+                        setSelectedSlotRect(rect);
+                      }}
+                    />
+                  );
+                })
+              ) : (
                 <p className="no-slots">No slots</p>
               )}
             </div>
@@ -159,15 +173,28 @@ export default function WeeklyCalendar() {
         ))}
       </div>
 
-      {!isMobile && selectedSlot && (
-        <div className="desktop-booking-form">
-            <BookingForm slot={selectedSlot} onClose={closeForm} />
-        </div>
+      {!isMobile && selectedSlot && selectedSlotRect && (
+        <AnimatedBookingForm
+          rect={selectedSlotRect}
+          slot={selectedSlot}
+          onClose={closeForm}
+          onBooked={() => {
+            closeForm();
+            fetchSlots();
+          }}
+        />
       )}
 
       {isMobile && (
         <Modal show={!!selectedSlot} onClose={closeForm}>
-          <BookingForm slot={selectedSlot} onClose={closeForm} />
+          <BookingForm
+            slot={selectedSlot}
+            onClose={closeForm}
+            onBooked={() => {
+              closeForm();
+              fetchSlots();
+            }}
+          />
         </Modal>
       )}
     </div>

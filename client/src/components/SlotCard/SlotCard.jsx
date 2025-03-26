@@ -1,17 +1,18 @@
 import React from 'react';
 import './SlotCard.css';
 
-export default function SlotCard({ slot, onSelect = () => {} }) {
-  const isBooked = slot.booked; // ✅ check booked boolean from API
+const SlotCard = React.forwardRef(({ slot, onSelect = () => {} }, ref) => {
+  const isBooked = slot.booked;
 
   const handleClick = () => {
     if (!isBooked) {
-      onSelect(slot);
+      onSelect(slot, ref); // 👈 pass the ref to the parent
     }
   };
 
   return (
     <div
+      ref={ref}
       className={`slot-card ${isBooked ? 'booked' : 'available'}`}
       onClick={handleClick}
     >
@@ -21,4 +22,6 @@ export default function SlotCard({ slot, onSelect = () => {} }) {
       )}
     </div>
   );
-}
+});
+
+export default SlotCard;

@@ -322,6 +322,9 @@ def create_booking(current_user):
 
         payment_ref = str(uuid.uuid4())[:8]
 
+        print("Current user:", current_user)
+        print("Name:", getattr(current_user, 'name', None))
+
         booking = Booking(
             student_name=current_user.name,
             topic=topic,
@@ -368,12 +371,12 @@ def add_slot(current_user):
     
 @app.route("/api/slots", methods=["GET"])
 @token_required
-def get_available_slots(current_user):
+def get_all_slots(current_user):
     try:
         start = request.args.get("start")  # 'YYYY-MM-DD'
         end = request.args.get("end")      # 'YYYY-MM-DD'
 
-        query = AvailableSlot.query.filter_by(booked=False)
+        query = AvailableSlot.query
 
         if start and end:
             start_dt = datetime.strptime(start, "%Y-%m-%d")
@@ -385,9 +388,8 @@ def get_available_slots(current_user):
 
         slots = query.order_by(AvailableSlot.start_time).all()
         return jsonify([s.to_dict() for s in slots])
-    
     except Exception as e:
-        return jsonify({ "error": str(e) }), 400
+        return jsonify({"error": str(e)}), 400
 
 @app.route("/api/bookings", methods=["GET"])
 @token_required

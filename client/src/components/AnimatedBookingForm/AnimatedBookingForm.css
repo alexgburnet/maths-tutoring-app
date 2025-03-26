@@ -1,0 +1,30 @@
+.animated-booking-form {
+    position: absolute;
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    transition:
+      top 0.3s ease,
+      left 0.3s ease,
+      width 0.3s ease,
+      height 0.3s ease,
+      transform 0.3s ease,
+      opacity 0.3s ease;
+    opacity: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  /* FINAL animated position */
+  .animated-booking-form.animate {
+    top: 50% !important;            /* Move it down below the slot */
+    left: 50% !important;             /* Centered horizontally */
+    transform: translateX(-50%) !important;
+    width: 400px !important;
+    height: auto !important;
+    opacity: 1 !important;
+  }
