@@ -15,22 +15,33 @@ export default function WeeklyCalendar() {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   useEffect(() => {
-    const fetchSlots = async () => {
-      const start = currentMonday.toISOString().split('T')[0];
-      const endDate = new Date(currentMonday);
-      endDate.setDate(endDate.getDate() + 4);
-      const end = endDate.toISOString().split('T')[0];
+  const fetchSlots = async () => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // strip time
+    const weekStart = currentMonday < today ? today : currentMonday;
 
-      try {
-        const data = await SlotService.getAvailableSlots(start, end);
-        setSlots(data);
-      } catch (err) {
-        console.error('Failed to fetch slots', err);
-      }
-    };
+    const weekEnd = new Date(currentMonday);
+    weekEnd.setDate(weekEnd.getDate() + 4);
 
-    fetchSlots();
-  }, [currentMonday]);
+    // 🛑 If the week is entirely in the past, do not fetch
+    if (weekStart > weekEnd) {
+      setSlots([]);
+      return;
+    }
+
+    const start = weekStart.toISOString().split('T')[0];
+    const end = weekEnd.toISOString().split('T')[0];
+
+    try {
+      const data = await SlotService.getAvailableSlots(start, end);
+      setSlots(data);
+    } catch (err) {
+      console.error('Failed to fetch slots', err);
+    }
+  };
+
+  fetchSlots();
+}, [currentMonday]);
 
   function getMonday(date = new Date()) {
     const d = new Date(date);
