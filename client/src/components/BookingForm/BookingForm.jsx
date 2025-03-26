@@ -21,7 +21,9 @@ export default function BookingForm({ slot, onClose, onBooked }) {
   
     try {
       await BookingService.createBooking(slot.id, topic);
-      if (onBooked) onBooked();
+      if (onBooked) {
+        console.log('calling onBooked!!');
+        onBooked();}
       onClose();
     } catch (err) {
       setError(err.response?.data?.error || 'Booking failed');
