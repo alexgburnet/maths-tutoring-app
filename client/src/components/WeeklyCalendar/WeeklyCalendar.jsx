@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { GoChevronRight, GoChevronLeft } from "react-icons/go";
 import SlotCard from '../SlotCard/SlotCard';
 import BookingForm from '../BookingForm/BookingForm';
-import BookingModal from '../BookingModal/BookingModal';
+import Modal from '../Modal/Modal';
 import SlotService from '../../services/SlotService';
 
 import './WeeklyCalendar.css';
@@ -161,14 +161,14 @@ export default function WeeklyCalendar() {
 
       {!isMobile && selectedSlot && (
         <div className="desktop-booking-form">
-          <BookingForm slot={selectedSlot} onClose={closeForm} />
+            <BookingForm slot={selectedSlot} onClose={closeForm} />
         </div>
       )}
 
       {isMobile && (
-        <BookingModal show={!!selectedSlot} onClose={closeForm}>
+        <Modal show={!!selectedSlot} onClose={closeForm}>
           <BookingForm slot={selectedSlot} onClose={closeForm} />
-        </BookingModal>
+        </Modal>
       )}
     </div>
   );

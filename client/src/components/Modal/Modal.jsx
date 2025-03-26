@@ -1,8 +1,8 @@
 // BookingModal.jsx
 import React from 'react';
-import './BookingModal.css';
+import './Modal.css';
 
-export default function BookingModal({ show, children, onClose }) {
+export default function Modal({ show, children, onClose }) {
   if (!show) return null;
 
   return (
