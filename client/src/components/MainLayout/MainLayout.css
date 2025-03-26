@@ -33,7 +33,7 @@
 }
 
 .page-title {
-    font-size: 3rem;
+    font-size: 2rem;
     font-weight: 700;
     margin-bottom: 1rem;
 }
@@ -48,9 +48,5 @@
 @media (max-width: 768px) {
   .page-container {
       padding: 3rem 1.5rem 1.5rem 1.5rem;
-  }
-
-  .page-title {
-    font-size: 2rem;
   }
 }

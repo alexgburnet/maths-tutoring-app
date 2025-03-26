@@ -202,6 +202,7 @@ def register():
         "is_admin": user.is_admin,
         "name": user.name,
         "surname": user.surname,
+        "email": user.email,
         "exp": datetime.utcnow() + timedelta(hours=2)
     }
 
@@ -282,6 +283,7 @@ def login():
         "is_admin": user.is_admin,
         "name": user.name,
         "surname": user.surname,
+        "email": user.email,
         "exp": datetime.utcnow() + timedelta(hours=2)
     }
 
@@ -326,6 +328,7 @@ def refresh():
             "is_admin": user.is_admin,
             "name": user.name,
             "surname": user.surname,
+            "email": user.email,
             "exp": datetime.utcnow() + timedelta(minutes=15),
         }, SECRET_KEY, algorithm="HS256")
 

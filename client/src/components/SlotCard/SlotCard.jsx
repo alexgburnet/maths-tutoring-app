@@ -17,9 +17,6 @@ const SlotCard = React.forwardRef(({ slot, onSelect = () => {} }, ref) => {
       onClick={handleClick}
     >
       <p className="slot-time">{slot.startTime}</p>
-      {isBooked && slot.user?.name && (
-        <p className="student-name">{slot.user.name}</p>
-      )}
     </div>
   );
 });
