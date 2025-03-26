@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import BookingForm from '../BookingForm/BookingForm';
 import './AnimatedBookingForm.css';
 
-export default function AnimatedBookingForm({ rect, slot, onClose }) {
+export default function AnimatedBookingForm({ rect, slot, onClose, onBooked }) {
   const [animate, setAnimate] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const formRef = useRef();
@@ -36,7 +36,7 @@ export default function AnimatedBookingForm({ rect, slot, onClose }) {
         height: `${rect.height}px`,
       }}
     >
-      <BookingForm slot={slot} onClose={handleClose} />
+      <BookingForm slot={slot} onClose={handleClose} onBooked={onBooked}/>
     </div>
   );
 }
