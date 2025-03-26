@@ -56,7 +56,7 @@
   }
   
   /* Mobile (≤768px): 1 column, vertical scroll */
-  @media (max-width: 768px) {
+  @media (max-width: 1060px) {
     .calendar-grid {
       display: flex;
       flex-direction: column;
@@ -110,3 +110,70 @@
 .calendar-title {
     font-weight: 400;
 }
+
+.calendar-transition {
+    transition: transform 0.3s ease;
+  }
+  
+  .calendar-transition.slide-left {
+    animation: slideLeft 0.3s ease;
+  }
+  
+  .calendar-transition.slide-right {
+    animation: slideRight 0.3s ease;
+  }
+  
+  @keyframes slideLeft {
+    0% { transform: translateX(100%); opacity: 0; }
+    100% { transform: translateX(0); opacity: 1; }
+  }
+  
+  @keyframes slideRight {
+    0% { transform: translateX(-100%); opacity: 0; }
+    100% { transform: translateX(0); opacity: 1; }
+  }
+
+  .calendar-slide-wrapper {
+    overflow: hidden;
+    position: relative;
+    width: 100%;
+  }
+  
+  .calendar-slide-track {
+    display: flex;
+    transition: transform 0.3s ease;
+    width: 200%; /* holds two week views side by side */
+  }
+  
+  .calendar-week-view {
+    width: 100%;
+    flex-shrink: 0;
+  }
+  
+  .calendar-slide-wrapper.left .calendar-slide-track {
+    transform: translateX(-100%);
+  }
+  
+  .calendar-slide-wrapper.right .calendar-slide-track {
+    transform: translateX(100%);
+  }
+
+  .calendar-slide-wrapper {
+    overflow: hidden;
+    width: 100%;
+  }
+  
+  .calendar-slide-track {
+    display: flex;
+    width: 200%;
+    transition: transform 0.3s ease-in-out;
+  }
+  
+  .calendar-week-view {
+    width: 50%;         /* Instead of 100% */
+    flex-shrink: 0;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1.5rem;
+    padding: 1rem;
+  }

@@ -1,0 +1,24 @@
+.booking-form {
+    padding: 1rem;
+    max-width: 350px;
+  }
+  
+  .booking-form input {
+    width: 100%;
+    padding: 0.5rem;
+    margin-top: 0.25rem;
+    margin-bottom: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+  }
+  
+  .booking-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+  
+  .error-text {
+    color: red;
+    font-size: 0.9rem;
+  }

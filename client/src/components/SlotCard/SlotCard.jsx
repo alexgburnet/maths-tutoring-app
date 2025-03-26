@@ -1,12 +1,12 @@
 import React from 'react';
 import './SlotCard.css';
 
-export default function SlotCard({ slot }) {
-  const isBooked = !!slot.user;
+export default function SlotCard({ slot, onSelect = () => {} }) {
+  const isBooked = slot.booked; // ✅ check booked boolean from API
 
   const handleClick = () => {
     if (!isBooked) {
-      // Logic here!
+      onSelect(slot);
     }
   };
 
@@ -16,7 +16,9 @@ export default function SlotCard({ slot }) {
       onClick={handleClick}
     >
       <p className="slot-time">{slot.startTime}</p>
-      {isBooked && <p className="student-name">{slot.user.name}</p>}
+      {isBooked && slot.user?.name && (
+        <p className="student-name">{slot.user.name}</p>
+      )}
     </div>
   );
 }
