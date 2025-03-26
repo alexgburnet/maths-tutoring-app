@@ -18,7 +18,7 @@ from functools import wraps
 from mathpix_helper import extract_latex_from_pdf
 from openai_helper import generate_followup_questions_latex
 from pdflatex_helper import render_latex_to_pdf
-
+from sqlalchemy import and_
 import logging
 
 logging.basicConfig(
@@ -312,18 +312,20 @@ def logout():
 def create_booking(current_user):
     data = request.json
     try:
-        scheduled_time = datetime.fromisoformat(data["scheduled_time"])
-        slot = AvailableSlot.query.filter_by(start_time=scheduled_time, booked=False).first()
+        slot_id = data["slot_id"]
+        topic = data["topic"]
 
-        if not slot:
+        slot = AvailableSlot.query.get(slot_id)
+
+        if not slot or slot.booked:
             return jsonify({"error": "Slot is not available"}), 400
 
-        payment_ref = str(uuid.uuid4())[:8]  # Short, unique, user-safe
+        payment_ref = str(uuid.uuid4())[:8]
 
         booking = Booking(
             student_name=current_user.name,
-            topic=data["topic"],
-            scheduled_time=scheduled_time,
+            topic=topic,
+            scheduled_time=slot.start_time,
             user_id=current_user.id,
             slot_id=slot.id,
             payment_ref=payment_ref
@@ -331,15 +333,15 @@ def create_booking(current_user):
 
         slot.booked = True
 
-        zoom_meeting = create_zoom_meeting(
-            student_name=current_user.name,
-            student_surname=current_user.surname,
-            student_email=current_user.email,
-            start_time_iso=data["scheduled_time"]
-        )
-
-        booking.zoom_link = zoom_meeting["join_url"]
-        booking.zoom_meeting_id = zoom_meeting["id"]
+        if slot.start_time > datetime.utcnow():
+            zoom_meeting = create_zoom_meeting(
+                student_name=current_user.name,
+                student_surname=current_user.surname,
+                student_email=current_user.email,
+                start_time_iso=slot.start_time.isoformat()
+            )
+            booking.zoom_link = zoom_meeting["join_url"]
+            booking.zoom_meeting_id = zoom_meeting["id"]
 
         db.session.add(booking)
         db.session.commit()
@@ -367,8 +369,25 @@ def add_slot(current_user):
 @app.route("/api/slots", methods=["GET"])
 @token_required
 def get_available_slots(current_user):
-    slots = AvailableSlot.query.filter_by(booked=False).order_by(AvailableSlot.start_time).all()
-    return jsonify([s.to_dict() for s in slots])
+    try:
+        start = request.args.get("start")  # 'YYYY-MM-DD'
+        end = request.args.get("end")      # 'YYYY-MM-DD'
+
+        query = AvailableSlot.query.filter_by(booked=False)
+
+        if start and end:
+            start_dt = datetime.strptime(start, "%Y-%m-%d")
+            end_dt = datetime.strptime(end, "%Y-%m-%d") + timedelta(days=1)  # make it inclusive
+            query = query.filter(and_(
+                AvailableSlot.start_time >= start_dt,
+                AvailableSlot.start_time < end_dt
+            ))
+
+        slots = query.order_by(AvailableSlot.start_time).all()
+        return jsonify([s.to_dict() for s in slots])
+    
+    except Exception as e:
+        return jsonify({ "error": str(e) }), 400
 
 @app.route("/api/bookings", methods=["GET"])
 @token_required
