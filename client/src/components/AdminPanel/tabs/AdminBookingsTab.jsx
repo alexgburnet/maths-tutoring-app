@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import BookingService from '../../../services/BookingService';
+import FileService from '../../../services/FileService';
+import AdminService from '../../../services/AdminService';
 
 export default function AdminBookingsTab() {
     const [bookings, setBookings] = useState([]);
@@ -13,9 +15,7 @@ export default function AdminBookingsTab() {
     const fetchBookings = async () => {
         setLoading(true);
         const data = await BookingService.getAllBookings();
-    
         const sorted = [...data].sort((a, b) => new Date(b.scheduled_time) - new Date(a.scheduled_time));
-    
         setBookings(sorted);
         setLoading(false);
     };
@@ -44,7 +44,7 @@ export default function AdminBookingsTab() {
         const file = e.target.files[0];
         if (!file) return;
         setUploadingId(bookingId);
-        await BookingService.uploadNotes(bookingId, file);
+        await FileService.uploadNotes(bookingId, file);
         setUploadingId(null);
         fetchBookings();
     };
@@ -52,6 +52,20 @@ export default function AdminBookingsTab() {
     const handleDeleteBooking = async (id) => {
         await BookingService.deleteBooking(id);
         fetchBookings();
+    };
+
+    const downloadFile = async (filename) => {
+        try {
+            const blob = await FileService.downloadNotes(filename);
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            link.click();
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error('Failed to download file', err);
+        }
     };
 
     return (
@@ -85,23 +99,25 @@ export default function AdminBookingsTab() {
                                     <td>
                                         {b.notes_url ? (
                                             <>
-                                                <a href={b.notes_url} target="_blank" rel="noreferrer">View</a>
+                                                <button onClick={() => downloadFile(b.notes_url.split('/').pop())}>
+                                                    Download
+                                                </button>
                                                 <button onClick={() => handleDeleteNotes(b.id)} className="button-danger">🗑</button>
                                             </>
                                         ) : (
-                                            <>
-                                                <input
-                                                    type="file"
-                                                    accept="application/pdf"
-                                                    onChange={(e) => handleUploadNotes(e, b.id)}
-                                                    disabled={uploadingId === b.id}
-                                                />
-                                            </>
+                                            <input
+                                                type="file"
+                                                accept="application/pdf"
+                                                onChange={(e) => handleUploadNotes(e, b.id)}
+                                                disabled={uploadingId === b.id}
+                                            />
                                         )}
                                     </td>
                                     <td>
                                         {b.followup_url ? (
-                                            <a href={b.followup_url} target="_blank" rel="noreferrer">PDF</a>
+                                            <button onClick={() => downloadFile(b.followup_url.split('/').pop())}>
+                                                Download
+                                            </button>
                                         ) : (
                                             <button onClick={() => handleRegenerateFollowup(b.id)}>↻</button>
                                         )}

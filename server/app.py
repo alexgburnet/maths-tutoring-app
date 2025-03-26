@@ -690,16 +690,25 @@ def serve_notes_file(current_user, filename):
 @admin_required
 def delete_notes(current_user, booking_id):
     booking = Booking.query.get_or_404(booking_id)
-    if not booking.notes_filename:
-        return jsonify({"error": "No notes to delete"}), 400
 
-    file_path = os.path.join(app.config["UPLOAD_FOLDER"], booking.notes_filename)
+    if not booking.notes_filename and not booking.followup_filename:
+        return jsonify({"error": "No notes or follow-up to delete"}), 400
+
+    notes_path = os.path.join(app.config["UPLOAD_FOLDER"], booking.notes_filename) if booking.notes_filename else None
+    followup_path = os.path.join(app.config["UPLOAD_FOLDER"], booking.followup_filename) if booking.followup_filename else None
+
     try:
-        if os.path.exists(file_path):
-            os.remove(file_path)
-        booking.notes_filename = None
+        if notes_path and os.path.exists(notes_path):
+            os.remove(notes_path)
+            booking.notes_filename = None
+
+        if followup_path and os.path.exists(followup_path):
+            os.remove(followup_path)
+            booking.followup_filename = None
+
         db.session.commit()
-        return jsonify({"message": "Notes deleted"})
+        return jsonify({"message": "Notes and follow-up deleted (if present)"})
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     
