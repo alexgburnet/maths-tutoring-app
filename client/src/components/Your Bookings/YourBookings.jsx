@@ -1,13 +1,33 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import BookingService from '../../services/BookingService';
 import './YourBookings.css';
 
-import BookingCard from '../BookingCard/BookingCard';
+import DesktopBookingCard from '../DesktopBookingCard/DesktopBookingCard';
+import MobileBookingCard from '../MobileBookingCard/MobileBookingCard';
 
 export default function Bookings() {
     const [upcoming, setUpcoming] = useState([]);
     const [previous, setPrevious] = useState([]);
     const [loading, setLoading] = useState(true);
+    const containerRef = useRef(null);
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const el = containerRef.current;
+        if (el) {
+          setIsMobile(el.offsetWidth < 768); // set it initially
+          const observer = new ResizeObserver(entries => {
+            for (let entry of entries) {
+              const width = entry.contentRect.width;
+              setIsMobile(width < 768);
+            }
+          });
+      
+          observer.observe(el);
+      
+          return () => observer.disconnect();
+        }
+      }, []);
 
     useEffect(() => {
         BookingService.getUserBookings()
@@ -33,7 +53,7 @@ export default function Bookings() {
     };
 
     return (
-        <div className="page-container">
+        <div className="page-container" ref={containerRef}>
             <div className="page-header">
                 <h1 className="page-title">Your Bookings</h1>
                 <hr className="page-separator" />
@@ -43,20 +63,50 @@ export default function Bookings() {
                 <p>Loading bookings...</p>
             ) : (
                 <div className="page-content">
-                    <section>
+                    <section className='upcoming-bookings'>
                         <h2>Upcoming Bookings</h2>
                         {upcoming.length > 0 ? (
                             <div className="booking-grid">
-                                {upcoming.map(b => <BookingCard booking={b} isUpcoming={true} cancelBooking={cancelBooking} />)}
+                                {isMobile 
+                                    ? upcoming.map((b, index) => (
+                                        <MobileBookingCard 
+                                            key={b.id || index} 
+                                            booking={b} 
+                                            isUpcoming={true} 
+                                            cancelBooking={cancelBooking} 
+                                        />
+                                    )) 
+                                    : upcoming.map((b, index) => (
+                                        <DesktopBookingCard 
+                                            key={b.id || index} 
+                                            booking={b} 
+                                            isUpcoming={true} 
+                                            cancelBooking={cancelBooking} 
+                                        />
+                                    ))}
                             </div>
                         ) : <p>No upcoming bookings</p>}
                     </section>
 
-                    <section>
+                    <section className='previous-bookings'>
                         <h2>Previous Bookings</h2>
                         {previous.length > 0 ? (
                             <div className="booking-grid">
-                                {previous.map(b => <BookingCard booking={b} isUpcoming={false} />)}
+                                {isMobile 
+                                    ? previous.map((b, index) => (
+                                        <MobileBookingCard 
+                                            key={b.id || index} 
+                                            booking={b} 
+                                            isUpcoming={false} 
+                                        />
+                                    )) 
+                                    : previous.map((b, index) => (
+                                        <DesktopBookingCard 
+                                            key={b.id || index} 
+                                            booking={b} 
+                                            isUpcoming={false} 
+                                        />
+                                    ))}
                             </div>
                         ) : <p>No previous bookings</p>}
                     </section>

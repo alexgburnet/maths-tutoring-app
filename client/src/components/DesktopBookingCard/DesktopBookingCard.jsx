@@ -1,6 +1,6 @@
-import './BookingCard.css';
+import './DesktopBookingCard.css';
 
-export default function BookingCard({ booking, isUpcoming, cancelBooking }) {
+export default function DesktopBookingCard({ booking, isUpcoming, cancelBooking }) {
     return (
         <div className="booking-card" key={booking.id}>
 
@@ -32,22 +32,22 @@ export default function BookingCard({ booking, isUpcoming, cancelBooking }) {
 
             <div className="vertical-line"></div>
 
-            {isUpcoming && (
-                <>
-                    <div className="cancel card-section">
-                        <button className="cancel-button" onClick={() => cancelBooking(booking.id)}>
-                            Cancel Booking
-                        </button>
-                    </div>
-                    <div className="vertical-line"></div>
-                </>
-            )}
-
             <div className="payment card-section">
                 <span className={`status ${booking.is_paid ? "paid" : "unpaid"}`}>
                     {booking.is_paid ? "Paid" : "Unpaid"}
                 </span>
             </div>
+
+            {isUpcoming && (
+                <>
+                    <div className="vertical-line"></div>
+                    <div className="cancel card-section">
+                        <button className="cancel-button" onClick={() => cancelBooking(booking.id)}>
+                            <p>Cancel</p>
+                        </button>
+                    </div>
+                </>
+            )}
         </div>
     );
 }
