@@ -226,6 +226,49 @@ def register():
 
     return response
 
+@app.route("/api/user/update-details", methods=["POST"])
+@token_required
+def update_user_details(current_user):
+    data = request.json
+
+    # Allow updating name, surname, and email
+    name = data.get("name")
+    surname = data.get("surname")
+    email = data.get("email")
+
+    if email and email != current_user.email:
+        # Check if email is already in use
+        if User.query.filter_by(email=email).first():
+            return jsonify({"error": "Email already in use"}), 400
+        current_user.email = email
+
+    if name:
+        current_user.name = name
+
+    if surname:
+        current_user.surname = surname
+
+    db.session.commit()
+    return jsonify({"message": "User details updated"})
+
+@app.route("/api/user/change-password", methods=["POST"])
+@token_required
+def change_password(current_user):
+    data = request.json
+
+    old_password = data.get("old_password")
+    new_password = data.get("new_password")
+
+    if not current_user.check_password(old_password):
+        return jsonify({"error": "Old password is incorrect"}), 400
+
+    if not new_password or len(new_password) < 6:
+        return jsonify({"error": "New password must be at least 6 characters"}), 400
+
+    current_user.set_password(new_password)
+    db.session.commit()
+    return jsonify({"message": "Password updated successfully"})
+
 @app.route("/api/login", methods=["POST"])
 def login():
     data = request.json

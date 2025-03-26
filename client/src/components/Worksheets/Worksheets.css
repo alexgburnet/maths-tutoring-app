@@ -1,0 +1,39 @@
+.worksheets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.worksheet-card {
+  background-color: white;
+  border-radius: 12px;
+  padding: 1rem;
+  cursor: pointer;
+  text-decoration: none;
+  color: #222;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  user-select: none;
+}
+
+.worksheet-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.worksheet-card h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.2rem;
+  color: #111;
+}
+
+.worksheet-card p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.worksheet-card span {
+    color: var(--color-primary);
+  }

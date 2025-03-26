@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import BookingService from '../../services/BookingService';
+import FileService from '../../services/FileService';
 import './Notes.css';
 
 export default function Notes() {
@@ -9,12 +10,29 @@ export default function Notes() {
   useEffect(() => {
     BookingService.getBookingsWithNotes()
       .then(data => {
-        // Sort by scheduled_time (newest first)
         const sorted = data.sort((a, b) => new Date(b.scheduled_time) - new Date(a.scheduled_time));
         setNotesBookings(sorted);
       })
       .finally(() => setLoading(false));
   }, []);
+
+  const handleDownload = async (notesUrl, topic) => {
+    try {
+      const filename = notesUrl.split('/').pop();
+      const blob = await FileService.downloadNotes(filename);
+
+      const url = window.URL.createObjectURL(new Blob([blob]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${topic}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Failed to download notes:", error);
+    }
+  };
 
   return (
     <div className="page-container">
@@ -30,16 +48,14 @@ export default function Notes() {
         ) : (
           <div className="notes-grid">
             {notesBookings.map(booking => (
-              <a
+              <div
                 key={booking.id}
-                href={booking.notes_url}
-                target="_blank"
-                rel="noopener noreferrer"
                 className="note-card"
+                onClick={() => handleDownload(booking.notes_url, booking.topic)}
               >
-                <h3>{booking.topic}</h3>
+                <h3>Click for notes on <span>{booking.topic}</span></h3>
                 <p>{new Date(booking.scheduled_time).toLocaleDateString()}</p>
-              </a>
+              </div>
             ))}
           </div>
         )}
