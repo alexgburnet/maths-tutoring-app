@@ -26,6 +26,16 @@ class BookingService {
     const res = await axios.post(`/bookings/${bookingId}/check_payment`);
     return res.data;
   }
+
+  async getBookingsWithNotes() {
+    const res = await axios.get('/bookings/with-notes');
+    return res.data;
+  }
+
+  async getBookingsWithFollowups() {
+    const res = await axios.get('/bookings/with-followups');
+    return res.data;
+  }
 }
 
 export default new BookingService();
