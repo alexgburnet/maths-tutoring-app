@@ -1,14 +1,13 @@
-.booking-grid {
-    
-    gap: 1.5rem;
-}
-
 .booking-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     background: #fff;
     border-radius: 15px;
     padding: 1.5rem;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
     transition: transform 0.2s ease;
+    height: 150px;
 }
 
 .booking-card:hover {
@@ -57,4 +56,9 @@
 
 .cancel-button:hover {
     background-color: #c62828;
+}
+
+.vertical-line {
+    border-left: 2px solid #ccc;
+    height: 100%;
 }
