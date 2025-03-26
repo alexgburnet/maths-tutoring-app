@@ -12,8 +12,8 @@ class BookingService {
     return res.data;
   }
 
-  async createBooking(scheduled_time, topic) {
-    const res = await axios.post('/bookings', { scheduled_time, topic });
+  async createBooking(slot_id, topic) {
+    const res = await axios.post('/bookings', { slot_id, topic });
     return res.data;
   }
 

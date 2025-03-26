@@ -1,3 +1,5 @@
+import BookingService from '../../services/BookingService';
+
 import React, { useState } from 'react';
 import './BookingForm.css'; // optional styling
 
@@ -13,32 +15,16 @@ export default function BookingForm({ slot, onClose, onBooked }) {
       setError('Please enter a topic.');
       return;
     }
-
+  
     setLoading(true);
     setError('');
-
+  
     try {
-      const response = await fetch('/api/bookings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('access_token')}`,
-        },
-        body: JSON.stringify({
-          scheduled_time: slot.startIso, // we'll add this in WeeklyCalendar
-          topic,
-        }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Booking failed');
-      }
-
-      if (onBooked) onBooked(); // optional success callback
+      await BookingService.createBooking(slot.id, topic);
+      if (onBooked) onBooked();
       onClose();
     } catch (err) {
-      setError(err.message);
+      setError(err.response?.data?.error || 'Booking failed');
     } finally {
       setLoading(false);
     }
