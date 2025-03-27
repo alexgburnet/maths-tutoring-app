@@ -29,25 +29,8 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(message)s",
 )
 
-def start_payment_checker():
-    def check_loop():
-        while True:
-            print("🔄 Running scheduled payment check...")
-            try:
-                with app.app_context():
-                    update_paid_status_for_bookings()
-                    print("✅ Payment check complete")
-            except Exception as e:
-                print(f"❌ Payment check failed: {e}")
-            time.sleep(600)  # 600 seconds = 10 minutes
-
-    thread = threading.Thread(target=check_loop, daemon=True)
-    thread.start()
-
 # Load .env file
 load_dotenv()
-
-# Init Flask
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
 
@@ -74,13 +57,6 @@ UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads', 'notes')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 ALLOWED_EXTENSIONS = {'pdf'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
-with app.app_context():
-    print("Creating database tables (if not exists)...")
-    db.create_all()
-
-    # 🔁 Start the recurring Monzo payment checker
-    start_payment_checker()
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -801,3 +777,23 @@ def regenerate_followup(current_user, booking_id):
         return jsonify({"message": "Follow-up regenerated"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+def start_payment_checker():
+    def check_loop():
+        while True:
+            print("🔄 Running scheduled payment check...")
+            try:
+                with app.app_context():
+                    update_paid_status_for_bookings()
+                    print("✅ Payment check complete")
+            except Exception as e:
+                print(f"❌ Payment check failed: {e}")
+            time.sleep(600)  # 600 seconds = 10 minutes
+
+    thread = threading.Thread(target=check_loop, daemon=True)
+    thread.start()
+
+
+with app.app_context():
+    print("🚀 Starting background payment checker...")
+    start_payment_checker()
