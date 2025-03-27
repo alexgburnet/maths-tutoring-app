@@ -1,5 +1,6 @@
 // src/services/FileService.js
 import axios from './axios';
+import { getAccessToken } from './auth';
 
 class FileService {
   async uploadNotes(bookingId, file) {
@@ -15,24 +16,30 @@ class FileService {
     return res.data;
   }
 
-  async downloadNotes(filename) {
-    const url = `/uploads/notes/${filename}`; // ✅ Construct full URL here
+  async downloadNotes(fileUrl) {
+    const token = getAccessToken();
 
-    const res = await axios.get(url, {
-      responseType: 'blob',
+    const response = await fetch(fileUrl, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     });
 
-    const blob = res.data;
+    if (!response.ok) {
+      throw new Error("Failed to download file");
+    }
+
+    const blob = await response.blob();
     const downloadUrl = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = downloadUrl;
 
-    // Try to get filename from Content-Disposition, else fall back to original filename
-    const contentDisposition = res.headers['content-disposition'];
-    const match = contentDisposition?.match(/filename="?(.+?)"?$/);
-    const finalFilename = match ? match[1] : filename;
+    const contentDisposition = response.headers.get("Content-Disposition");
+    const match = contentDisposition?.match(/filename="?(.+?)"?/);
+    const filename = match ? match[1] : "download.pdf";
 
-    link.download = finalFilename;
+    link.download = filename;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

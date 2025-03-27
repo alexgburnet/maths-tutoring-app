@@ -55,30 +55,11 @@ export default function AdminBookingsTab() {
     };
 
     const downloadFile = async (url) => {
-        const response = await fetch(url, {
-            method: "GET",
-            headers: { Authorization: token },
-          });
-      
-          if (!response.ok) {
-            alert("Failed to download notes.");
-            return;
-          }
-      
-          const blob = await response.blob();
-          const downloadUrl = window.URL.createObjectURL(blob);
-          const link = document.createElement("a");
-          link.href = downloadUrl;
-      
-          const contentDisposition = response.headers.get("Content-Disposition");
-          const match = contentDisposition?.match(/filename="(.+)"/);
-          const filename = match ? match[1] : "notes.pdf";
-      
-          link.download = filename;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-        };
+        try {
+          await FileService.downloadNotes(url);
+        } catch (err) {
+          console.error('Failed to download file', err);
+        }
     };
 
     return (
