@@ -3,6 +3,6 @@
     "name": "Tutor App",
     "start_url": "/",
     "display": "standalone",
-    "theme_color": "#121212",
-    "background_color": "#121212"
+    "theme_color": "f8fafc",
+    "background_color": "f8fafc"
   }
