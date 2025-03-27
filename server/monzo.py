@@ -5,16 +5,28 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+REFRESH_TOKEN_PATH = "refresh_token.txt"
+
+def load_refresh_token():
+    if os.path.exists(REFRESH_TOKEN_PATH):
+        with open(REFRESH_TOKEN_PATH, "r") as f:
+            return f.read().strip()
+    return os.getenv("MONZO_REFRESH_TOKEN")  # fallback to .env on first run
+
+def save_refresh_token(token):
+    with open(REFRESH_TOKEN_PATH, "w") as f:
+        f.write(token)
+
 class MonzoClient:
     def __init__(self):
         self.base_url = "https://api.monzo.com"
         self.client_id = os.getenv("MONZO_CLIENT_ID")
         self.client_secret = os.getenv("MONZO_CLIENT_SECRET")
-        self.refresh_token = os.getenv("MONZO_REFRESH_TOKEN")
         self.account_id = os.getenv("MONZO_ACCOUNT_ID")
 
+        self.refresh_token = load_refresh_token()
         self.access_token = None
-        self.token_expires_at = 0  # Unix timestamp
+        self.token_expires_at = 0
         self.refresh_access_token()
 
     def refresh_access_token(self):
@@ -35,8 +47,11 @@ class MonzoClient:
 
         token_data = response.json()
         self.access_token = token_data["access_token"]
+        self.refresh_token = token_data["refresh_token"]  # Updated token from Monzo
+        save_refresh_token(self.refresh_token)            # Save for next time
+
         expires_in = token_data.get("expires_in", 3600)
-        self.token_expires_at = time.time() + expires_in - 60  # Refresh 1 minute early
+        self.token_expires_at = time.time() + expires_in - 60
         print("✅ Token refreshed!")
 
     def get_access_token(self):
