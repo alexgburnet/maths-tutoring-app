@@ -16,23 +16,13 @@ export default function Notes() {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleDownload = async (notesUrl, topic) => {
-    try {
-      const filename = notesUrl.split('/').pop();
-      const blob = await FileService.downloadNotes(filename);
-
-      const url = window.URL.createObjectURL(new Blob([blob]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `${topic}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Failed to download notes:", error);
-    }
-  };
+  const downloadFile = async (url) => {
+        try {
+        await FileService.downloadNotes(url);
+        } catch (err) {
+        console.error('Failed to download file', err);
+        }
+    };
 
   return (
     <div className="page-container">
@@ -51,7 +41,7 @@ export default function Notes() {
               <div
                 key={booking.id}
                 className="note-card"
-                onClick={() => handleDownload(booking.notes_url, booking.topic)}
+                onClick={() => downloadFile(booking.notes_url)}
               >
                 <h3>Click for notes on <span>{booking.topic}</span></h3>
                 <p>{new Date(booking.scheduled_time).toLocaleDateString()}</p>

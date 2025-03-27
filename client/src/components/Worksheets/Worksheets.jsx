@@ -16,23 +16,13 @@ export default function Worksheets() {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleDownload = async (followupUrl, topic) => {
-    try {
-      const filename = followupUrl.split('/').pop();
-      const blob = await FileService.downloadNotes(filename);
-
-      const url = window.URL.createObjectURL(new Blob([blob]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `${topic} - Worksheet.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Failed to download worksheet:", error);
-    }
-  };
+  const downloadFile = async (url) => {
+        try {
+        await FileService.downloadNotes(url);
+        } catch (err) {
+        console.error('Failed to download file', err);
+        }
+    };
 
   return (
     <div className="page-container">
@@ -51,7 +41,7 @@ export default function Worksheets() {
               <div
                 key={booking.id}
                 className="worksheet-card"
-                onClick={() => handleDownload(booking.followup_url, booking.topic)}
+                onClick={() => downloadFile(booking.followup_url)}
               >
                 <h3>Click to download the AI-generated worksheet on <span>{booking.topic}</span></h3>
                 <p>{new Date(booking.scheduled_time).toLocaleDateString()}</p>
