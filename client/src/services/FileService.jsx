@@ -22,6 +22,11 @@ class FileService {
 
     return res.data;
   }
+
+  async deleteNotes(bookingId) {
+    const res = await axios.delete(`/admin/delete-notes/${bookingId}`);
+    return res.data;
+  }
 }
 
 export default new FileService();
