@@ -1,0 +1,100 @@
+/* Highlight banner like "Night Owl Mode" */
+.highlight-banner {
+    background-color: #e7e5fb;
+    color: #333;
+    padding: 1.5rem;
+    border-radius: 1rem;
+    margin-bottom: 2rem;
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+/* Dashboard cards layout */
+.dashboard-cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    width: 100%;
+}
+
+/* Individual feature card */
+.feature-card {
+    background-color: white;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    flex: 1 1 250px; /* allows it to shrink and grow */
+    min-width: 0; /* 👈 forces flexbox to wrap if needed */
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+}
+/* Emoji or icon */
+.feature-icon {
+    font-size: 2rem;
+    line-height: 1;
+}
+
+/* Text in card */
+.feature-card h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.1rem;
+}
+
+.feature-card p {
+    margin: 0;
+    font-size: 0.95rem;
+    color: #555;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .dashboard-cards {
+        flex-direction: column;
+        flex-wrap: nowrap;
+    }
+
+    .feature-card {
+        flex: 1 1 100%;
+    }
+}
+
+/* Animation keyframes */
+@keyframes slideFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Add animation to each card */
+.feature-card {
+    opacity: 0;
+    animation: slideFadeIn 0.6s ease forwards;
+}
+
+/* Delay each card for a nice staggered effect */
+.feature-card:nth-child(1) {
+    animation-delay: 0.1s;
+}
+.feature-card:nth-child(2) {
+    animation-delay: 0.2s;
+}
+.feature-card:nth-child(3) {
+    animation-delay: 0.3s;
+}
+.feature-card:nth-child(4) {
+    animation-delay: 0.4s;
+}
+/* Add more if needed */
+
+.feature-date {
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: #888;
+    font-style: italic;
+}
