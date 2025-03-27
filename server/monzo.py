@@ -1,17 +1,14 @@
 import os
 import time
 import requests
-from dotenv import load_dotenv
 
-load_dotenv()
+REFRESH_TOKEN_PATH = "/app/secrets/refresh_token.txt"
 
-REFRESH_TOKEN_PATH = "refresh_token.txt"
-
-def load_refresh_token():
+def load_refresh_token(from_env_fallback=True):
     if os.path.exists(REFRESH_TOKEN_PATH):
         with open(REFRESH_TOKEN_PATH, "r") as f:
             return f.read().strip()
-    return os.getenv("MONZO_REFRESH_TOKEN")  # fallback to .env on first run
+    return os.getenv("MONZO_REFRESH_TOKEN") if from_env_fallback else None
 
 def save_refresh_token(token):
     with open(REFRESH_TOKEN_PATH, "w") as f:
@@ -29,7 +26,7 @@ class MonzoClient:
         self.token_expires_at = 0
         self.refresh_access_token()
 
-    def refresh_access_token(self):
+    def refresh_access_token(self, fallback_attempt=False):
         print("🔁 Refreshing Monzo access token...")
 
         response = requests.post(
@@ -42,17 +39,24 @@ class MonzoClient:
             }
         )
 
-        if response.status_code != 200:
-            raise Exception(f"❌ Failed to refresh token: {response.status_code} - {response.text}")
+        if response.status_code == 200:
+            token_data = response.json()
+            self.access_token = token_data["access_token"]
+            self.refresh_token = token_data["refresh_token"]
+            save_refresh_token(self.refresh_token)
 
-        token_data = response.json()
-        self.access_token = token_data["access_token"]
-        self.refresh_token = token_data["refresh_token"]  # Updated token from Monzo
-        save_refresh_token(self.refresh_token)            # Save for next time
+            expires_in = token_data.get("expires_in", 3600)
+            self.token_expires_at = time.time() + expires_in - 60
+            print("✅ Token refreshed successfully!")
+        else:
+            print(f"❌ Failed to refresh token: {response.status_code} - {response.text}")
 
-        expires_in = token_data.get("expires_in", 3600)
-        self.token_expires_at = time.time() + expires_in - 60
-        print("✅ Token refreshed!")
+            if not fallback_attempt:
+                print("🔁 Attempting fallback to .env refresh token...")
+                self.refresh_token = load_refresh_token(from_env_fallback=True)
+                self.refresh_access_token(fallback_attempt=True)
+            else:
+                raise Exception("❌ Token refresh failed even with fallback")
 
     def get_access_token(self):
         if time.time() >= self.token_expires_at:

@@ -18,6 +18,7 @@ services:
     restart: always
     volumes:
       - uploads_data:/app/uploads/notes  # ✅ mount uploads directory
+      - monzo_secrets:/app/secrets  # ✅ mount secrets directory
     environment:
       FLASK_APP: app.py
       FLASK_ENV: production
@@ -53,3 +54,4 @@ volumes:
   caddy_config:
   pgdata:
   uploads_data:  # ✅ this is the named volume for notes
+  monzo_secrets:
