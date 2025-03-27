@@ -785,9 +785,9 @@ def start_payment_checker():
             try:
                 with app.app_context():
                     update_paid_status_for_bookings()
-                    print("✅ Payment check complete")
+                    logging.info("✅ Payment check complete")
             except Exception as e:
-                print(f"❌ Payment check failed: {e}")
+                logging.info(f"❌ Payment check failed: {e}")
             time.sleep(600)  # 600 seconds = 10 minutes
 
     thread = threading.Thread(target=check_loop, daemon=True)
