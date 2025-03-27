@@ -54,17 +54,11 @@ export default function AdminBookingsTab() {
         fetchBookings();
     };
 
-    const downloadFile = async (filename) => {
+    const downloadFile = async (url) => {
         try {
-            const blob = await FileService.downloadNotes(filename);
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = filename;
-            link.click();
-            window.URL.revokeObjectURL(url);
+          await FileService.downloadNotes(url);
         } catch (err) {
-            console.error('Failed to download file', err);
+          console.error('Failed to download file', err);
         }
     };
 
