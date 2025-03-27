@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_from_directory, send_file
+from flask import Flask, request, jsonify, send_from_directory, send_file, make_response
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import desc
 from flask_cors import CORS
@@ -18,7 +18,7 @@ from functools import wraps
 from mathpix_helper import extract_latex_from_pdf
 from openai_helper import generate_followup_questions_latex
 from pdflatex_helper import render_latex_to_pdf
-
+from sqlalchemy import and_
 import logging
 
 logging.basicConfig(
@@ -31,7 +31,7 @@ load_dotenv()
 
 # Init Flask
 app = Flask(__name__)
-CORS(app)
+CORS(app, supports_credentials=True)
 
 # Database config
 DB_USER = os.getenv("POSTGRES_USER")
@@ -147,8 +147,14 @@ def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         token = request.headers.get("Authorization")
+
+        # Support "Bearer <token>" or just "<token>"
         if not token:
             return jsonify({"error": "Token is missing"}), 401
+
+        if token.startswith("Bearer "):
+            token = token.split(" ")[1]
+
         try:
             payload = pyjwt.decode(token, SECRET_KEY, algorithms=["HS256"])
             user = User.query.get(payload["user_id"])
@@ -191,15 +197,78 @@ def register():
     db.session.add(user)
     db.session.commit()
 
-    payload = {
+    access_payload = {
         "user_id": user.id,
         "is_admin": user.is_admin,
         "name": user.name,
         "surname": user.surname,
+        "email": user.email,
         "exp": datetime.utcnow() + timedelta(hours=2)
     }
-    token = pyjwt.encode(payload, SECRET_KEY, algorithm="HS256")
-    return jsonify({"token": token})
+
+    refresh_payload = {
+        "user_id": user.id,
+        "exp": datetime.utcnow() + timedelta(days=30)
+    }
+
+    access_token = pyjwt.encode(access_payload, SECRET_KEY, algorithm="HS256")
+    refresh_token = pyjwt.encode(refresh_payload, SECRET_KEY, algorithm="HS256")
+
+    response = jsonify({"access_token": access_token})
+
+    response.set_cookie(
+        "refresh_token",
+        refresh_token,
+        httponly=True,
+        secure=True,
+        samesite="Strict",
+        max_age=60 * 60 * 24 * 30  # 30 days
+    )
+
+    return response
+
+@app.route("/api/user/update-details", methods=["POST"])
+@token_required
+def update_user_details(current_user):
+    data = request.json
+
+    # Allow updating name, surname, and email
+    name = data.get("name")
+    surname = data.get("surname")
+    email = data.get("email")
+
+    if email and email != current_user.email:
+        # Check if email is already in use
+        if User.query.filter_by(email=email).first():
+            return jsonify({"error": "Email already in use"}), 400
+        current_user.email = email
+
+    if name:
+        current_user.name = name
+
+    if surname:
+        current_user.surname = surname
+
+    db.session.commit()
+    return jsonify({"message": "User details updated"})
+
+@app.route("/api/user/change-password", methods=["POST"])
+@token_required
+def change_password(current_user):
+    data = request.json
+
+    old_password = data.get("old_password")
+    new_password = data.get("new_password")
+
+    if not current_user.check_password(old_password):
+        return jsonify({"error": "Old password is incorrect"}), 400
+
+    if not new_password or len(new_password) < 6:
+        return jsonify({"error": "New password must be at least 6 characters"}), 400
+
+    current_user.set_password(new_password)
+    db.session.commit()
+    return jsonify({"message": "Password updated successfully"})
 
 @app.route("/api/login", methods=["POST"])
 def login():
@@ -209,35 +278,103 @@ def login():
     if not user or not user.check_password(data["password"]):
         return jsonify({"error": "Invalid credentials"}), 401
 
-    payload = {
+    access_payload = {
         "user_id": user.id,
         "is_admin": user.is_admin,
         "name": user.name,
         "surname": user.surname,
+        "email": user.email,
         "exp": datetime.utcnow() + timedelta(hours=2)
     }
-    token = pyjwt.encode(payload, SECRET_KEY, algorithm="HS256")
 
-    print(f"User {user.email} logged in")
-    return jsonify({"token": token})
+    refresh_payload = {
+        "user_id": user.id,
+        "exp": datetime.utcnow() + timedelta(days=30)
+    }
+
+    access_token = pyjwt.encode(access_payload, SECRET_KEY, algorithm="HS256")
+    refresh_token = pyjwt.encode(refresh_payload, SECRET_KEY, algorithm="HS256")
+
+    response = jsonify({"access_token": access_token})
+
+    response.set_cookie(
+        "refresh_token",
+        refresh_token,
+        httponly=True,
+        secure=True,
+        samesite="Strict",
+        max_age=60 * 60 * 24 * 30  # 30 days
+    )
+
+    return response
+
+
+@app.route("/api/refresh", methods=["POST"])
+def refresh():
+    refresh_token = request.cookies.get("refresh_token")
+    if not refresh_token:
+        return jsonify({"error": "No refresh token"}), 401
+
+    try:
+        payload = pyjwt.decode(refresh_token, SECRET_KEY, algorithms=["HS256"])
+        user_id = payload["user_id"]
+
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({"error": "User not found"}), 401
+
+        new_access_token = pyjwt.encode({
+            "user_id": user.id,
+            "is_admin": user.is_admin,
+            "name": user.name,
+            "surname": user.surname,
+            "email": user.email,
+            "exp": datetime.utcnow() + timedelta(minutes=15),
+        }, SECRET_KEY, algorithm="HS256")
+
+        return jsonify({ "access_token": new_access_token })
+
+    except Exception as e:
+        return jsonify({ "error": f"Invalid refresh token: {str(e)}" }), 401
+    
+@app.route("/api/logout", methods=["POST"])
+def logout():
+    response = jsonify({ "message": "Logged out successfully" })
+    
+    # Overwrite the refresh cookie with Max-Age = 0 to delete it
+    response.set_cookie(
+        "refresh_token",
+        "",
+        httponly=True,
+        secure=True,
+        samesite="Strict",
+        max_age=0
+    )
+
+    return response
 
 @app.route("/api/bookings", methods=["POST"])
 @token_required
 def create_booking(current_user):
     data = request.json
     try:
-        scheduled_time = datetime.fromisoformat(data["scheduled_time"])
-        slot = AvailableSlot.query.filter_by(start_time=scheduled_time, booked=False).first()
+        slot_id = data["slot_id"]
+        topic = data["topic"]
 
-        if not slot:
+        slot = AvailableSlot.query.get(slot_id)
+
+        if not slot or slot.booked:
             return jsonify({"error": "Slot is not available"}), 400
 
-        payment_ref = str(uuid.uuid4())[:8]  # Short, unique, user-safe
+        payment_ref = str(uuid.uuid4())[:8]
+
+        print("Current user:", current_user)
+        print("Name:", getattr(current_user, 'name', None))
 
         booking = Booking(
             student_name=current_user.name,
-            topic=data["topic"],
-            scheduled_time=scheduled_time,
+            topic=topic,
+            scheduled_time=slot.start_time,
             user_id=current_user.id,
             slot_id=slot.id,
             payment_ref=payment_ref
@@ -245,15 +382,15 @@ def create_booking(current_user):
 
         slot.booked = True
 
-        zoom_meeting = create_zoom_meeting(
-            student_name=current_user.name,
-            student_surname=current_user.surname,
-            student_email=current_user.email,
-            start_time_iso=data["scheduled_time"]
-        )
-
-        booking.zoom_link = zoom_meeting["join_url"]
-        booking.zoom_meeting_id = zoom_meeting["id"]
+        if slot.start_time > datetime.utcnow():
+            zoom_meeting = create_zoom_meeting(
+                student_name=current_user.name,
+                student_surname=current_user.surname,
+                student_email=current_user.email,
+                start_time_iso=slot.start_time.isoformat()
+            )
+            booking.zoom_link = zoom_meeting["join_url"]
+            booking.zoom_meeting_id = zoom_meeting["id"]
 
         db.session.add(booking)
         db.session.commit()
@@ -280,9 +417,25 @@ def add_slot(current_user):
     
 @app.route("/api/slots", methods=["GET"])
 @token_required
-def get_available_slots(current_user):
-    slots = AvailableSlot.query.filter_by(booked=False).order_by(AvailableSlot.start_time).all()
-    return jsonify([s.to_dict() for s in slots])
+def get_all_slots(current_user):
+    try:
+        start = request.args.get("start")  # 'YYYY-MM-DD'
+        end = request.args.get("end")      # 'YYYY-MM-DD'
+
+        query = AvailableSlot.query
+
+        if start:
+            start_dt = datetime.strptime(start, "%Y-%m-%d")
+            query = query.filter(AvailableSlot.start_time >= start_dt)
+
+        if end:
+            end_dt = datetime.strptime(end, "%Y-%m-%d") + timedelta(days=1)  # make inclusive
+            query = query.filter(AvailableSlot.start_time < end_dt)
+
+        slots = query.order_by(AvailableSlot.start_time).all()
+        return jsonify([s.to_dict() for s in slots])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
 
 @app.route("/api/bookings", methods=["GET"])
 @token_required
@@ -302,29 +455,34 @@ def get_booking(booking_id):
 def delete_booking(current_user, booking_id):
     booking = Booking.query.get_or_404(booking_id)
 
-    print("Zoom meeting ID:", booking.zoom_meeting_id)
-
-    # Ensure only the owner can delete
+    # Ensure only the owner or an admin can delete
     if booking.user_id != current_user.id and not current_user.is_admin:
         return jsonify({"error": "Unauthorized"}), 403
 
+    print("Zoom meeting ID:", booking.zoom_meeting_id)
+
+    # Delete Zoom meeting if it exists
     if booking.zoom_meeting_id:
         try:
             delete_zoom_meeting(booking.zoom_meeting_id)
         except Exception as e:
-            print(f"Warning: Failed to delete Zoom meeting: {e}")
+            print(f"⚠️ Warning: Failed to delete Zoom meeting: {e}")
+
+    # Unmark slot as booked
+    if booking.slot:
+        booking.slot.booked = False  # ✅ Make slot available again
 
     db.session.delete(booking)
     db.session.commit()
 
-    return jsonify({"message": "Booking deleted"})
+    return jsonify({"message": "Booking deleted and slot made available again"})
 
 @app.route("/api/admin/users", methods=["GET"])
 @admin_required
 def get_all_users(current_user):
     users = User.query.all()
     return jsonify([
-        {"id": u.id, "email": u.email, "is_admin": u.is_admin}
+        {"id": u.id, "name": u.name, "surname": u.surname, "email": u.email, "is_admin": u.is_admin}
         for u in users
     ])
 
@@ -532,16 +690,25 @@ def serve_notes_file(current_user, filename):
 @admin_required
 def delete_notes(current_user, booking_id):
     booking = Booking.query.get_or_404(booking_id)
-    if not booking.notes_filename:
-        return jsonify({"error": "No notes to delete"}), 400
 
-    file_path = os.path.join(app.config["UPLOAD_FOLDER"], booking.notes_filename)
+    if not booking.notes_filename and not booking.followup_filename:
+        return jsonify({"error": "No notes or follow-up to delete"}), 400
+
+    notes_path = os.path.join(app.config["UPLOAD_FOLDER"], booking.notes_filename) if booking.notes_filename else None
+    followup_path = os.path.join(app.config["UPLOAD_FOLDER"], booking.followup_filename) if booking.followup_filename else None
+
     try:
-        if os.path.exists(file_path):
-            os.remove(file_path)
-        booking.notes_filename = None
+        if notes_path and os.path.exists(notes_path):
+            os.remove(notes_path)
+            booking.notes_filename = None
+
+        if followup_path and os.path.exists(followup_path):
+            os.remove(followup_path)
+            booking.followup_filename = None
+
         db.session.commit()
-        return jsonify({"message": "Notes deleted"})
+        return jsonify({"message": "Notes and follow-up deleted (if present)"})
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     
@@ -557,3 +724,55 @@ def monzo_auth():
         f"&response_type=code&state={state}"
     )
     return f'<a href="{auth_url}">Click here to authorize Monzo</a>'
+
+@app.route("/api/bookings/with-notes", methods=["GET"])
+@token_required
+def get_bookings_with_notes(current_user):
+    bookings = Booking.query.filter_by(user_id=current_user.id).filter(Booking.notes_filename.isnot(None)).order_by(desc(Booking.scheduled_time)).all()
+    return jsonify([b.to_dict() for b in bookings])
+
+@app.route("/api/bookings/with-followups", methods=["GET"])
+@token_required
+def get_bookings_with_followups(current_user):
+    bookings = Booking.query.filter_by(user_id=current_user.id).filter(Booking.followup_filename.isnot(None)).order_by(desc(Booking.scheduled_time)).all()
+    return jsonify([b.to_dict() for b in bookings])
+
+@app.route("/api/admin/unassign-slot/<int:slot_id>", methods=["POST"])
+@admin_required
+def unassign_slot(current_user, slot_id):
+    slot = AvailableSlot.query.get_or_404(slot_id)
+    if not slot.booked or not slot.booking:
+        return jsonify({"error": "Slot is not currently booked"}), 400
+
+    booking = slot.booking
+    if booking.zoom_meeting_id:
+        try:
+            delete_zoom_meeting(booking.zoom_meeting_id)
+        except Exception as e:
+            print(f"⚠️ Failed to delete Zoom meeting: {e}")
+    
+    db.session.delete(booking)
+    slot.booked = False
+    db.session.commit()
+
+    return jsonify({"message": "Slot unassigned and booking deleted"})
+
+@app.route("/api/admin/generate-followup/<int:booking_id>", methods=["POST"])
+@admin_required
+def regenerate_followup(current_user, booking_id):
+    booking = Booking.query.get_or_404(booking_id)
+    if not booking.notes_filename:
+        return jsonify({"error": "No notes file available for this booking"}), 400
+
+    try:
+        file_path = os.path.join(app.config["UPLOAD_FOLDER"], booking.notes_filename)
+        latex_text = extract_latex_from_pdf(file_path)
+        followup_latex = generate_followup_questions_latex(latex_text)
+        followup_filename = secure_filename(f"{booking_id}_{uuid.uuid4().hex[:8]}_regenerated.pdf")
+        followup_path = os.path.join(UPLOAD_FOLDER, followup_filename)
+        render_latex_to_pdf(followup_latex, followup_path)
+        booking.followup_filename = followup_filename
+        db.session.commit()
+        return jsonify({"message": "Follow-up regenerated"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

@@ -1,0 +1,57 @@
+.slot-card {
+    display: flex;
+    align-content: center;
+    justify-content: center;
+    padding: 0.75rem;
+    border-radius: 10px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+    font-size: 0.95rem;
+  }
+
+  .slot-card p{
+    font-size: 1.25rem;
+    margin: 0;
+    font-weight: 400;
+  }
+  
+  .slot-card.available {
+    background-color: var(--color-slot-available);
+  }
+  
+  .slot-card.booked {
+    background-color: var(--color-slot-booked);
+    opacity: 0.8;
+  }
+  
+  .slot-time {
+    font-weight: 600;
+  }
+  
+  .student-name {
+    font-size: 0.85rem;
+    color: #555;
+    margin-top: 0.2rem;
+  }
+
+  .slot-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  
+  .slot-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+
+  
+  .slot-card:active {
+    transform: scale(0.97);
+  }
+  
+  .slot-card.booked:hover {
+    transform: none;
+    box-shadow: none;
+    cursor: not-allowed;
+  }

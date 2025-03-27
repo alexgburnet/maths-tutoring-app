@@ -1,197 +1,100 @@
-.dashboard-grid {
+/* Highlight banner like "Night Owl Mode" */
+.highlight-banner {
+    background-color: #e7e5fb;
+    color: #333;
+    padding: 1.5rem;
+    border-radius: 1rem;
+    margin-bottom: 2rem;
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+/* Dashboard cards layout */
+.dashboard-cards {
     display: flex;
-    gap: 2rem;
-    padding: 1rem;
-    height: calc(100dvh - 157px); /* Keeps dashboard within viewport */
-    overflow: hidden;
-  }
-  
-  /* Sessions Panel (2/3 width) */
-  .session-lists {
-    flex: 2;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    width: 100%;
+}
+
+/* Individual feature card */
+.feature-card {
+    background-color: white;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    flex: 1 1 250px; /* allows it to shrink and grow */
+    min-width: 0; /* 👈 forces flexbox to wrap if needed */
     display: flex;
-    flex-direction: column;
-    background-color: #1e1e1e;
-    border-radius: 12px;
-    overflow: hidden; /* Prevent outer overflow */
-  }
-  
-  /* Split inside session panel */
-  .session-split {
-    display: flex;
-    flex: 1;
-    overflow: hidden; /* Contain inner scrolling */
-  }
-  
-  /* Session list column */
-  .session-list-column {
-    flex: 1;
-    overflow-y: auto;
-    padding: 1rem;
-    padding-top: 1rem;;
-  }
-  
-  /* Session detail */
-  .booking-details {
-    flex: 1;
-    overflow-y: auto;
-    padding: 1rem;
-    background-color: #181818;
-    border-left: 1px solid #2c2c2c;
-    color: #e4e4e4;
-    transition: all 0.4s ease;
-    max-width: 100%;
-    opacity: 1;
-  }
-  
-  .booking-details.hidden {
-    flex: 0;
-    max-width: 0;
+    align-items: flex-start;
+    gap: 1rem;
+}
+/* Emoji or icon */
+.feature-icon {
+    font-size: 2rem;
+    line-height: 1;
+}
+
+/* Text in card */
+.feature-card h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.1rem;
+}
+
+.feature-card p {
+    margin: 0;
+    font-size: 0.95rem;
+    color: #555;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .dashboard-cards {
+        flex-direction: column;
+        flex-wrap: nowrap;
+    }
+
+    .feature-card {
+        flex: 1 1 100%;
+    }
+}
+
+/* Animation keyframes */
+@keyframes slideFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Add animation to each card */
+.feature-card {
     opacity: 0;
-    padding: 0;
-    overflow: hidden;
-    border-left: none;
-  }
-  
-  .booking-details.show {
-    flex: 1;
-    max-width: 500px;
-    opacity: 1;
-    padding: 1rem;
-  }
-  
-  /* Calendar Panel (1/3 width) */
-  .calendar-column {
-    flex: 1;
-    background-color: #1e1e1e;
-    border-radius: 12px;
-    padding: 1rem;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    max-height: 100%;
-  }
-  
-  .calendar-column > * {
-    flex: none;
-    overflow: unset;
-  }
+    animation: slideFadeIn 0.6s ease forwards;
+}
 
-  .session-list-column::-webkit-scrollbar, .calendar-column::-webkit-scrollbar {
-    width: 6px;
-  }
-  .session-list-column::-webkit-scrollbar-thumb, .calendar-column::-webkit-scrollbar-thumb {
-    background-color: rgba(255, 255, 255, 0.315);
-    border-radius: 4px;
-  }
-  .session-list-column::-webkit-scrollbar-track, .calendar-column::-webkit-scrollbar-track {
-    background: transparent;
-  }
+/* Delay each card for a nice staggered effect */
+.feature-card:nth-child(1) {
+    animation-delay: 0.1s;
+}
+.feature-card:nth-child(2) {
+    animation-delay: 0.2s;
+}
+.feature-card:nth-child(3) {
+    animation-delay: 0.3s;
+}
+.feature-card:nth-child(4) {
+    animation-delay: 0.4s;
+}
+/* Add more if needed */
 
-  @media (max-width: 768px) {
-    .dashboard-grid {
-      flex-direction: column;
-      height: 82dvh;
-      padding: 1rem;
-      gap: 1rem;
-      overflow: hidden;
-    }
-
-    .calendar-column {
-        flex: none;
-        max-height: 38dvh;
-        border-radius: 12px;
-        overflow-y: auto; /* ✅ Keep scroll on calendar-column */
-    }
-
-
-    .session-lists {
-        flex: none;
-        max-height: 38dvh;
-        border-radius: 12px;
-        overflow: hidden;
-    }
-  
-    .session-split {
-      flex-direction: column;
-      height: 100%;
-    }
-  
-    .session-list-column {
-      flex: 1;
-      overflow-y: auto;
-      padding: 1rem;
-    }
-  
-    .booking-details {
-      display: none; /* Hide inline panel on mobile */
-    }
-  
-    .calendar-column > * {
-      flex: 1;
-    }
-  }
-
-
-  .mobile-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background-color: rgba(0, 0, 0, 0.6);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-  }
-  
-  .modal-content {
-    background-color: #1e1e1e;
-    color: #ffffff;
-    padding: 2rem;
-    border-radius: 12px;
-    width: 90%;
-    max-height: 80vh;
-    overflow-y: auto;
-    box-shadow: 0 0 20px rgba(0,0,0,0.4);
-    margin: 2rem;
-  }
-
-
-  .session-list-column h2 {
-    position: sticky;
-    top: 0;
-    background-color: #1e1e1e; /* same as container to "hide" scrolling behind */
-    padding-bottom: 1rem;
-    margin: 0; /* remove margin that causes the gap */
-    z-index: 2;
-  }
-
-  .session-list-column {
-    overflow-y: auto;
-    padding: 0 1rem 1rem; /* remove top padding */
-    position: relative;
-  }
-
-  .session-list-column h2 {
-    margin-top: 1rem;
-  }
-
-  .scroll-arrow {
-    text-align: center;
-    font-size: 1.2rem;
-    color: #666;
-    padding: 0.5rem 0;
-    margin-top: 1rem;
-    position: sticky;
-    bottom: 0;
-    z-index: 1;
-    opacity: 1;
-    transition: opacity 0.5s ease-in-out;
-  }
-  
-  .scroll-arrow.fade-out {
-    opacity: 0;
-    pointer-events: none;
-  }
+.feature-date {
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: #888;
+    font-style: italic;
+}

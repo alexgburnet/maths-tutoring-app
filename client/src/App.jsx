@@ -1,47 +1,62 @@
 import { useState } from "react";
 import { BrowserRouter as Router, Route, Routes, Link } from "react-router-dom";
-import AuthForm from "./components/AuthForm/AuthForm";
-import Dashboard from "./components/Dashboard/Dashboard";
 import HomePage from "./components/HomePage/HomePage";
-import Navbar from "./components/Navbar/Navbar";
 import NotFound from "./components/NotFound";
-import AdminRoute from "./components/AdminRoute";
-import AdminPage from "./components/AdminPage/AdminPage";
+import AuthPage from "./components/AuthPage/AuthPage";
+import Dashboard from "./components/Dashboard/Dashboard";
+import YourBookings from "./components/Your Bookings/YourBookings";
+import Settings from "./components/Settings/Settings";
+import AdminPanel from "./components/AdminPanel/AdminPanel";
+import MakeBooking from "./components/MakeBooking/MakeBooking";
+import Notes from "./components/Notes/Notes";
+import Worksheets from "./components/Worksheets/Worksheets";
+import ChangePassword from "./components/ChangePassword/ChangePassword";
+
+import MainLayout from "./components/MainLayout/MainLayout";
+
 import ProtectedRoute from "./components/ProtectedRoute";
-import { getTokenFromCookie } from "./auth";
+import AdminRoute from "./components/AdminRoute";
 
 function App() {
-  const [loggedIn, setLoggedIn] = useState(!!getTokenFromCookie());
-
-  const handleLogout = () => {
-      clearTokenCookie();
-      onLogout();
-      navigate("/");
-    };
-
+  
     return (
       <Router>
-        <Navbar loggedIn={loggedIn} setLoggedIn={setLoggedIn} />
-  
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/auth" element={<AuthForm onAuth={() => setLoggedIn(true)} />} />
+
+          <Route path="/login" element={<AuthPage />} />
+
+          <Route path="/signup" element={<AuthPage />} />
+
           <Route
-            path="/dashboard"
             element={
               <ProtectedRoute>
-                <Dashboard onLogout={() => setLoggedIn(false)} />
+                <MainLayout />
               </ProtectedRoute>
             }
-          />
+          >
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/make-booking" element={<MakeBooking />} />
+            <Route path="/your-bookings" element={<YourBookings />} />
+            <Route path="/notes" element={<Notes />} />
+            <Route path="/worksheets" element={<Worksheets />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/change-password" element={<ChangePassword />} />
+            {/* You can keep adding more protected routes here */}
+          </Route>
+
+          {/* Admin-only Routes */}
           <Route
-            path="/admin"
             element={
               <AdminRoute>
-                <AdminPage />
+                <MainLayout />
               </AdminRoute>
             }
-          />
+          >
+            <Route path="/admin" element={<AdminPanel />} />
+            {/* More admin-only pages can go here */}
+          </Route>
+
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Router>

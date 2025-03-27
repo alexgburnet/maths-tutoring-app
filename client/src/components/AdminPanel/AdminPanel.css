@@ -1,0 +1,195 @@
+@import '../Settings/Settings.css';
+
+/* Layout */
+.page-container {
+    padding: 2rem;
+}
+
+.page-header .page-title {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.page-separator {
+    margin-top: 0.25rem;
+    margin-bottom: 2rem;
+}
+
+.admin-tab-content {
+    background-color: white;
+    padding: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+    margin-top: 2rem;
+    overflow-x: auto;
+}
+
+/* Tabs */
+.settings-tabs {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.tab {
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    border: none;
+    background-color: #f3f3f3;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.tab.active {
+    background-color: var(--color-primary);
+    color: white;
+}
+
+.tab.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Table */
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+.admin-table th,
+.admin-table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #e0e0e0;
+    text-align: left;
+}
+
+.admin-table th {
+    font-weight: 600;
+    color: #333;
+    background-color: #f9f9f9;
+}
+
+.admin-table td button {
+    margin-right: 0.5rem;
+    padding: 0.3rem 0.7rem;
+    border: none;
+    border-radius: 0.3rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+    background-color: #eee;
+    transition: background 0.2s ease;
+}
+
+.admin-table td button:hover {
+    background-color: #ddd;
+}
+
+.admin-table a {
+    color: var(--color-primary);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.admin-table a:hover {
+    text-decoration: underline;
+}
+
+/* Button Variants */
+.button-primary {
+    background-color: var(--color-primary);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.button-primary:hover {
+    background-color: var(--color-primary);
+}
+
+.button-danger {
+    background-color: #dc3545;
+    color: white;
+}
+
+.button-danger:hover {
+    background-color: #b02a37;
+}
+
+/* File Input */
+input[type="file"] {
+    font-size: 0.9rem;
+    padding: 0.3rem;
+}
+
+/* Form Styles */
+.admin-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-width: 500px;
+}
+
+.admin-form input,
+.admin-form select {
+    padding: 0.6rem;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 0.4rem;
+}
+
+.admin-form label {
+    font-weight: 500;
+}
+
+/* Status and Feedback */
+.loading {
+    font-style: italic;
+    color: #888;
+}
+
+.empty-state {
+    color: #777;
+    text-align: center;
+    padding: 2rem 0;
+}
+
+/* Toasts */
+.toast {
+    padding: 1rem;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    margin-bottom: 1rem;
+}
+
+.toast.success {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.toast.error {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.admin-table-container {
+    overflow-x: auto;
+    width: 100%;
+}
+
+.admin-table {
+    min-width: 600px; /* ensures proper scroll */
+}
+
+@media (max-width: 768px) {
+    .admin-table-container {
+        -webkit-overflow-scrolling: touch;
+        border-left: 2px solid #f0f0f0;
+        border-right: 2px solid #f0f0f0;
+    }
+}
