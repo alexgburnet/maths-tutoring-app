@@ -53,7 +53,7 @@ export default function HomePage() {
               cursorStyle="_"
               typeSpeed={70}
               deleteSpeed={50}
-              delaySpeed={5000}
+              delaySpeed={3000}
             />
           </p>
           <div className="cta">
