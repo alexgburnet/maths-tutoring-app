@@ -59,3 +59,7 @@ html, body {
 body {
     background: var(--gradient-background);
 }
+
+button, a, input, textarea {
+    touch-action: manipulation;
+}
