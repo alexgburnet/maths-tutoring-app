@@ -27,10 +27,13 @@ body, #root{
 
     --color-slot-available: #ffffff;
     --color-slot-booked: var(--menu-bar-colour);
+
+    --color-lilac: #f5f3ff;
+    --color-bg-card: #ffffff;
   
     /* Gradient background colors */
-    --gradient-start: rgb(247, 247, 247);
-    --gradient-end: rgb(247, 247, 247);
+    --gradient-start: rgb(247, 247, 247, 0.6);
+    --gradient-end: rgb(247, 247, 247, 0.6);
 
     --gradient-background: linear-gradient(to bottom right, var(--gradient-start), var(--gradient-end));
 
