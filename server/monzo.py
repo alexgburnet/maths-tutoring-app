@@ -24,7 +24,6 @@ class MonzoClient:
         self.refresh_token = load_refresh_token()
         self.access_token = None
         self.token_expires_at = 0
-        self.refresh_access_token()
 
     def refresh_access_token(self, fallback_attempt=False):
         print("🔁 Refreshing Monzo access token...")

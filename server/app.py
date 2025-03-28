@@ -58,18 +58,19 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 ALLOWED_EXTENSIONS = {'pdf'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
+monzo_client = MonzoClient()
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def update_paid_status_for_bookings():
-    monzo = MonzoClient()
     unpaid_bookings = Booking.query.filter_by(is_paid=False).all()
     
     for booking in unpaid_bookings:
         if not booking.payment_ref:
             continue
 
-        matches = monzo.get_transactions_by_reference(booking.payment_ref)
+        matches = monzo_client.get_transactions_by_reference(booking.payment_ref)
         # check transaction amount to be £20
         if matches and matches[0]["amount"] >= 2000:
             booking.is_paid = True
@@ -582,8 +583,7 @@ def check_payment_status(current_user, booking_id):
         if booking.is_paid:
             return jsonify({"message": "Already paid", "paid": True})
 
-        monzo = MonzoClient()
-        transactions = monzo.get_transactions_by_reference(reference=booking.payment_ref)
+        transactions = monzo_client.get_transactions_by_reference(reference=booking.payment_ref)
 
         total_amount = sum(txn.get("amount", 0) for txn in transactions)
         print(f"💰 Total matched amount: {total_amount}p")
@@ -788,6 +788,7 @@ def start_payment_checker():
                     logging.info("✅ Payment check complete")
             except Exception as e:
                 logging.info(f"❌ Payment check failed: {e}")
+
             time.sleep(600)  # 600 seconds = 10 minutes
 
     thread = threading.Thread(target=check_loop, daemon=True)
