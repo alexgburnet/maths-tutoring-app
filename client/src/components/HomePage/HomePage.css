@@ -136,22 +136,3 @@
   color: var(--color-muted);
   line-height: 1.6;
 }
-
-/* =====================
-    RESPONSIVE
-    ===================== */
-
-@media (max-width: 600px) {
-
-  .main-title {
-    font-size: 2rem;
-  }
-
-  .subtitle {
-    font-size: 1.1rem;
-  }
-
-  .cta button {
-    width: 100%;
-  }
-}
