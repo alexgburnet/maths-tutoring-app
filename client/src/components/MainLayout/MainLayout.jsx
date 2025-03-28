@@ -33,7 +33,7 @@ export default function MainLayout({ children }) {
         toggleSidebar={toggleSidebar}
         routes={availableRoutes}
       />
-      <div className={`main-content ${isSidebarOpen ? "sidebar-open" : ""}`}>
+      <div className={`main-content scrollable ${isSidebarOpen ? "sidebar-open" : ""}`}>
         <div className="page-content">
           <Outlet />
         </div>
