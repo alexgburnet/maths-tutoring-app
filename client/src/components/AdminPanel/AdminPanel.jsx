@@ -23,14 +23,12 @@ export default function AdminPanel() {
                 <hr className="page-separator" />
             </div>
 
-            <div className="page-content">
-                <div className="settings-tabs">
-                    <button className={`tab ${activeTab === 'slots' ? 'active' : ''}`} onClick={() => setActiveTab('slots')}>Slots</button>
-                    <button className={`tab ${activeTab === 'bookings' ? 'active' : ''}`} onClick={() => setActiveTab('bookings')}>Bookings</button>
-                    <button className={`tab ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}>Users</button>
-                </div>
-                <div className="admin-tab-content">{renderTab()}</div>
+            <div className="settings-tabs">
+                <button className={`tab ${activeTab === 'slots' ? 'active' : ''}`} onClick={() => setActiveTab('slots')}>Slots</button>
+                <button className={`tab ${activeTab === 'bookings' ? 'active' : ''}`} onClick={() => setActiveTab('bookings')}>Bookings</button>
+                <button className={`tab ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}>Users</button>
             </div>
+            <div className="admin-tab-content">{renderTab()}</div>
         </div>
     );
 }

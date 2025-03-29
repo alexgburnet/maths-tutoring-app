@@ -144,6 +144,56 @@ class AvailableSlot(db.Model):
             "booked": self.booked,
         }
     
+class Topic(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True)
+    category = db.Column(db.String(100))  # e.g., Algebra, Geometry
+    weight = db.Column(db.Float, default=1.0)  # Importance for grade calculation
+
+class ConfidenceDescriptor(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    topic_id = db.Column(db.Integer, db.ForeignKey("topic.id"), nullable=False)
+    score = db.Column(db.Integer, nullable=False)  # e.g., 0 to 5
+    description = db.Column(db.String(255), nullable=False)
+
+    topic = db.relationship("Topic", backref="descriptors")
+
+class SelfAssessment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship("User", backref="assessments")
+
+class TopicAssessment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    assessment_id = db.Column(db.Integer, db.ForeignKey("self_assessment.id"), nullable=False)
+    topic_id = db.Column(db.Integer, db.ForeignKey("topic.id"), nullable=False)
+    confidence_score = db.Column(db.Integer, nullable=False)  # 0–5
+
+    topic = db.relationship("Topic")
+    assessment = db.relationship("SelfAssessment", backref="topic_assessments")
+
+class WeeklyPlan(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    generated_at = db.Column(db.DateTime, default=datetime.utcnow)
+    exam_date = db.Column(db.DateTime, nullable=False)
+    target_grade = db.Column(db.String(10), nullable=False)
+    current_grade = db.Column(db.String(10), nullable=True)  # Optional predicted grade
+
+    user = db.relationship("User", backref="weekly_plans")
+
+class WeeklyPlanEntry(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    plan_id = db.Column(db.Integer, db.ForeignKey("weekly_plan.id"), nullable=False)
+    week_number = db.Column(db.Integer, nullable=False)
+    topic_id = db.Column(db.Integer, db.ForeignKey("topic.id"), nullable=False)
+    focus_area = db.Column(db.String(255))  # Optional note or subtopic
+
+    plan = db.relationship("WeeklyPlan", backref="entries")
+    topic = db.relationship("Topic")
+
 # Auth Decorator
 def token_required(f):
     @wraps(f)
