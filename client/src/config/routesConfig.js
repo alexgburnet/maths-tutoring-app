@@ -1,5 +1,7 @@
 // routesConfig.js
 import { FiHome, FiBookmark, FiCalendar, FiShield, FiBook, FiList } from "react-icons/fi";
+import { RiQuestionMark } from "react-icons/ri";
+
 
 export const ROUTES = [
   {
@@ -7,6 +9,12 @@ export const ROUTES = [
     path: "/dashboard",
     roles: ["user", "admin"],
     icon: FiHome, // Not JSX
+  },
+  {
+    label: "Quiz",
+    path: "/quiz",
+    roles: ["user", "admin"],
+    icon: RiQuestionMark,
   },
   {
     label: "Book A Session",

@@ -1,0 +1,229 @@
+/* ===================== MODAL & HEADER ===================== */
+.quiz-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+  }
+  
+  .quiz-modal {
+    background-color: white;
+    width: 100%;
+    max-width: 960px;
+    max-height: 90vh;
+    overflow-y: auto;
+    border-radius: 1rem;
+    padding: 2rem;
+    position: relative;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    animation: slideUp 0.3s ease-out;
+  }
+  
+  @keyframes slideUp {
+    from {
+      transform: translateY(40px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  
+  .quiz-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+  }
+  
+  .close-button {
+    font-size: 1.5rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    line-height: 1;
+    color: #444;
+    transition: color 0.2s ease;
+  }
+  
+  .close-button:hover {
+    color: #000;
+  }
+  
+  /* ===================== BUTTONS ===================== */
+  .create-button {
+    background-color: #4caf50;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    border: none;
+    margin-bottom: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  
+  /* ===================== SUBTOPIC (QUESTION) CARDS ===================== */
+  .question-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  
+  .question-item {
+    background-color: #f4f4f4;
+    margin-bottom: 1rem;
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .question-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+  }
+  
+  .question-header:hover {
+    background-color: #ececec;
+    border-radius: 0.5rem;
+  }
+  
+  .question-title {
+    font-weight: 500;
+    font-size: 1rem;
+  }
+  
+  .question-actions button {
+    background-color: #e53935;
+    color: white;
+    padding: 0.3rem 0.75rem;
+    font-size: 0.85rem;
+    border: none;
+    border-radius: 0.4rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+  
+  .question-actions button:hover {
+    background-color: #c62828;
+  }
+  
+  /* ===================== RUBRIC EDITOR ===================== */
+  .rubric-editor {
+    animation: fadeInDown 0.25s ease-out;
+    margin-top: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem;
+    background-color: #f9f9f9;
+    border-radius: 0.5rem;
+    border: 1px solid #e0e0e0;
+  }
+  
+  @keyframes fadeInDown {
+    from {
+      transform: translateY(-5px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  
+  .rubric-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+  }
+  
+  /* Score label stays same */
+  .rubric-score {
+    font-weight: 600;
+    font-size: 0.95rem;
+    width: 1.5rem;
+    text-align: center;
+    color: #444;
+  }
+  
+  /* Input takes 70% of the space */
+  .rubric-row input {
+    flex: 1 1 auto;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid #ccc;
+    font-size: 0.95rem;
+    min-width: 0;
+  }
+  
+  /* Save button fixed width */
+  .rubric-row .save-button {
+    flex: 0 0 auto;
+    width: 80px;
+    text-align: center;
+    padding: 0.4rem 0;
+    font-size: 0.85rem;
+    font-weight: 500;
+    border: none;
+    border-radius: 0.5rem;
+    background-color: var(--color-primary, #1976d2);
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    white-space: nowrap;
+  }
+  
+  .rubric-row .save-button:hover {
+    background-color: var(--color-primary-dark, #1565c0);
+  }
+
+
+  .subtopic-weight-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0.25rem 0 0.75rem;
+    padding: 0.5rem 1rem;
+    background-color: #f1f1f1;
+    border-radius: 0.5rem;
+    font-size: 0.95rem;
+  }
+  
+  .subtopic-weight-row label {
+    font-weight: 500;
+  }
+  
+  .subtopic-weight-row input {
+    width: 80px;
+    padding: 0.4rem 0.5rem;
+    border-radius: 0.4rem;
+    border: 1px solid #ccc;
+  }
+  
+  .subtopic-weight-row button {
+    padding: 0.4rem 0.75rem;
+    background-color: var(--color-primary, #1976d2);
+    color: white;
+    border: none;
+    border-radius: 0.4rem;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.85rem;
+  }
+  
+  .subtopic-weight-row button:hover {
+    background-color: var(--color-primary-dark, #1565c0);
+  }
