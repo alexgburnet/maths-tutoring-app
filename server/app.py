@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, send_from_directory, send_file, make_response
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import desc
+from sqlalchemy.orm import joinedload
 from flask_cors import CORS
 from dotenv import load_dotenv
 import os
@@ -150,14 +151,6 @@ class Topic(db.Model):
     category = db.Column(db.String(100))  # e.g., Algebra, Geometry
     weight = db.Column(db.Float, default=1.0)  # Importance for grade calculation
 
-class ConfidenceDescriptor(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    topic_id = db.Column(db.Integer, db.ForeignKey("topic.id"), nullable=False)
-    score = db.Column(db.Integer, nullable=False)  # e.g., 0 to 5
-    description = db.Column(db.String(255), nullable=False)
-
-    topic = db.relationship("Topic", backref="descriptors")
-
 class SelfAssessment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
@@ -168,10 +161,10 @@ class SelfAssessment(db.Model):
 class TopicAssessment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     assessment_id = db.Column(db.Integer, db.ForeignKey("self_assessment.id"), nullable=False)
-    topic_id = db.Column(db.Integer, db.ForeignKey("topic.id"), nullable=False)
-    confidence_score = db.Column(db.Integer, nullable=False)  # 0–5
+    question_id = db.Column(db.Integer, db.ForeignKey("topic_question.id"), nullable=False)
+    confidence_score = db.Column(db.Integer, nullable=False)
 
-    topic = db.relationship("Topic")
+    question = db.relationship("TopicQuestion")
     assessment = db.relationship("SelfAssessment", backref="topic_assessments")
 
 class WeeklyPlan(db.Model):
@@ -193,6 +186,23 @@ class WeeklyPlanEntry(db.Model):
 
     plan = db.relationship("WeeklyPlan", backref="entries")
     topic = db.relationship("Topic")
+
+class TopicQuestion(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    topic_id = db.Column(db.Integer, db.ForeignKey("topic.id"), nullable=False)
+    title = db.Column(db.String(100), nullable=False)  # e.g. "Simultaneous Equations"
+    tier = db.Column(db.String(20), nullable=False)  # "Foundation" or "Higher"
+    weight = db.Column(db.Float, default=1.0)  # importance for topic-level confidence
+
+    topic = db.relationship("Topic", backref="questions")
+    descriptors = db.relationship("ConfidenceDescriptor", backref="question", lazy=True)
+
+class ConfidenceDescriptor(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    question_id = db.Column(db.Integer, db.ForeignKey("topic_question.id"), nullable=False)
+    score = db.Column(db.Integer, nullable=False)  # 0–5
+    description = db.Column(db.String(255), nullable=False)
+
 
 # Auth Decorator
 def token_required(f):
@@ -231,6 +241,38 @@ def admin_required(f):
 with app.app_context():
     print("Creating database tables (if not exists)...")
     db.create_all()
+
+def compute_topic_confidences(assessment_id):
+    assessment = SelfAssessment.query.options(
+        joinedload(SelfAssessment.topic_assessments)
+        .joinedload(TopicAssessment.question)
+        .joinedload(TopicQuestion.topic)
+    ).get(assessment_id)
+
+    topic_confidence = {}
+
+    for ta in assessment.topic_assessments:
+        topic = ta.question.topic
+        weight = ta.question.weight
+        score = ta.confidence_score
+
+        if topic.id not in topic_confidence:
+            topic_confidence[topic.id] = {
+                "topic_name": topic.name,
+                "weighted_sum": 0.0,
+                "total_weight": 0.0
+            }
+
+        topic_confidence[topic.id]["weighted_sum"] += score * weight
+        topic_confidence[topic.id]["total_weight"] += weight
+
+    # Compute average
+    results = {}
+    for topic_id, data in topic_confidence.items():
+        average = data["weighted_sum"] / data["total_weight"]
+        results[data["topic_name"]] = round(average, 2)
+
+    return results
 
 # Routes
 

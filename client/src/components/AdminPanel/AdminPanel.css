@@ -8,12 +8,10 @@
 .page-header .page-title {
     font-size: 2rem;
     font-weight: bold;
-    margin-bottom: 0.5rem;
 }
 
 .page-separator {
     margin-top: 0.25rem;
-    margin-bottom: 2rem;
 }
 
 .admin-tab-content {
@@ -21,7 +19,6 @@
     padding: 2rem;
     border-radius: 1rem;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
-    margin-top: 2rem;
     overflow-x: auto;
 }
 
