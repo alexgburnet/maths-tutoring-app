@@ -870,6 +870,203 @@ def regenerate_followup(current_user, booking_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     
+@app.route("/api/admin/topics", methods=["GET"])
+@admin_required
+def get_topics(current_user):
+    topics = Topic.query.all()
+    return jsonify([{"id": t.id, "name": t.name, "category": t.category, "weight": t.weight} for t in topics])
+
+
+@app.route("/api/admin/topics", methods=["POST"])
+@admin_required
+def add_topic(current_user):
+    data = request.json
+    topic = Topic(name=data["name"], category=data.get("category"), weight=data.get("weight", 1.0))
+    db.session.add(topic)
+    db.session.commit()
+    return jsonify({"id": topic.id}), 201
+
+
+@app.route("/api/admin/topics/<int:id>", methods=["DELETE"])
+@admin_required
+def delete_topic(current_user, id):
+    topic = Topic.query.get_or_404(id)
+
+    # Get all questions for the topic
+    questions = TopicQuestion.query.filter_by(topic_id=topic.id).all()
+
+    # For each question, delete associated rubrics
+    for question in questions:
+        ConfidenceDescriptor.query.filter_by(question_id=question.id).delete()
+
+    # Delete the questions
+    TopicQuestion.query.filter_by(topic_id=topic.id).delete()
+
+    # Delete the topic
+    db.session.delete(topic)
+    db.session.commit()
+    return jsonify({"message": "Topic, questions, and rubrics deleted"})
+
+@app.route("/api/admin/questions", methods=["POST"])
+@admin_required
+def add_question(current_user):
+    data = request.json
+    question = TopicQuestion(
+        topic_id=data["topic_id"],
+        title=data["title"],
+        tier=data["tier"],
+        weight=data.get("weight", 1.0)
+    )
+    db.session.add(question)
+    db.session.commit()
+    return jsonify({"id": question.id}), 201
+
+
+@app.route("/api/admin/questions/<int:id>", methods=["PUT"])
+@admin_required
+def edit_question(current_user, id):
+    question = TopicQuestion.query.get_or_404(id)
+    data = request.json
+    question.title = data.get("title", question.title)
+    question.tier = data.get("tier", question.tier)
+    question.weight = data.get("weight", question.weight)
+    db.session.commit()
+    return jsonify({"message": "Question updated"})
+
+
+@app.route("/api/admin/questions/<int:id>", methods=["DELETE"])
+@admin_required
+def delete_question(current_user, id):
+    question = TopicQuestion.query.get_or_404(id)
+
+    # Delete associated rubrics
+    ConfidenceDescriptor.query.filter_by(question_id=question.id).delete()
+
+    db.session.delete(question)
+    db.session.commit()
+    return jsonify({"message": "Question and rubrics deleted"})
+
+
+@app.route("/api/admin/questions", methods=["GET"])
+@admin_required
+def get_questions(current_user):
+    topic_id = request.args.get("topic_id")
+    query = TopicQuestion.query
+    if topic_id:
+        query = query.filter_by(topic_id=topic_id)
+    questions = query.all()
+    return jsonify([
+        {
+            "id": q.id,
+            "title": q.title,
+            "tier": q.tier,
+            "weight": q.weight,
+            "topic_id": q.topic_id
+        } for q in questions
+    ])
+
+@app.route("/api/admin/questions/<int:question_id>/rubrics", methods=["GET"])
+@admin_required
+def get_rubrics(current_user, question_id):
+    rubrics = ConfidenceDescriptor.query.filter_by(question_id=question_id).all()
+    return jsonify([
+        {"id": r.id, "score": r.score, "description": r.description}
+        for r in rubrics
+    ])
+
+
+@app.route("/api/admin/rubrics", methods=["POST"])
+@admin_required
+def add_rubric(current_user):
+    data = request.json
+    rubric = ConfidenceDescriptor(
+        question_id=data["question_id"],
+        score=data["score"],
+        description=data["description"]
+    )
+    db.session.add(rubric)
+    db.session.commit()
+    return jsonify({"id": rubric.id}), 201
+
+
+@app.route("/api/admin/rubrics/<int:id>", methods=["PUT"])
+@admin_required
+def edit_rubric(current_user, id):
+    rubric = ConfidenceDescriptor.query.get_or_404(id)
+    data = request.json
+    rubric.score = data.get("score", rubric.score)
+    rubric.description = data.get("description", rubric.description)
+    db.session.commit()
+    return jsonify({"message": "Rubric updated"})
+
+
+@app.route("/api/admin/rubrics/<int:id>", methods=["DELETE"])
+@admin_required
+def delete_rubric(current_user, id):
+    rubric = ConfidenceDescriptor.query.get_or_404(id)
+    db.session.delete(rubric)
+    db.session.commit()
+    return jsonify({"message": "Rubric deleted"})
+
+@app.route("/api/quiz/submit", methods=["POST"])
+@token_required
+def submit_quiz(current_user):
+    data = request.json  # [{question_id, confidence_score}]
+
+    assessment = SelfAssessment(user_id=current_user.id)
+    db.session.add(assessment)
+    db.session.flush()  # Get assessment.id before commit
+
+    for entry in data:
+        question_id = entry["question_id"]
+        confidence_score = entry["confidence_score"]
+
+        question = TopicQuestion.query.get_or_404(question_id)
+        topic_assessment = TopicAssessment(
+            assessment_id=assessment.id,
+            question_id=question.id,
+            confidence_score=confidence_score
+        )
+        db.session.add(topic_assessment)
+
+    db.session.commit()
+    return jsonify({"message": "Assessment submitted"})
+
+@app.route("/api/quiz/topics", methods=["GET"])
+@token_required
+def quiz_get_topics(current_user):
+    topics = Topic.query.all()
+    return jsonify([
+        {"id": t.id, "name": t.name, "category": t.category}
+        for t in topics
+    ])
+
+@app.route("/api/quiz/questions", methods=["GET"])
+@token_required
+def quiz_get_questions(current_user):
+    topic_id = request.args.get("topic_id")
+    if not topic_id:
+        return jsonify({"error": "Missing topic_id"}), 400
+
+    questions = TopicQuestion.query.filter_by(topic_id=topic_id).all()
+    return jsonify([
+        {
+            "id": q.id,
+            "title": q.title,
+            "tier": q.tier,
+            "weight": q.weight
+        } for q in questions
+    ])
+
+@app.route("/api/quiz/questions/<int:question_id>/rubrics", methods=["GET"])
+@token_required
+def quiz_get_rubrics(current_user, question_id):
+    rubrics = ConfidenceDescriptor.query.filter_by(question_id=question_id).all()
+    return jsonify([
+        {"score": r.score, "description": r.description}
+        for r in rubrics
+    ])
+    
 def start_payment_checker():
     def check_loop():
         while True:

@@ -267,3 +267,24 @@
 .start-button:hover {
   background-color: var(--color-primary-dark, #1565c0);
 }
+
+/* =============== Responsive Styles =============== */
+@media (max-width: 768px) {
+  .splash-content, .thank-you-content {
+    padding: 1.5rem;
+  }
+
+  .splash-content h1 {
+    font-size: 1.8rem;
+  }
+  .splash-content p {
+    font-size: 1rem;
+  }
+
+  .thank-you-content h1 {
+    font-size: 1.8rem;
+  }
+  .thank-you-content p {
+    font-size: 1rem;
+  }
+}

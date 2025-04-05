@@ -103,13 +103,20 @@ export default function TakeQuiz() {
     return (
       <div className="splash-screen">
         <div className="splash-content">
-          <h1>Welcome to the Self-Assessment Quiz</h1>
+          <h1>Self-Assessment Quiz</h1>
+  
           <p>
-            This quiz helps you reflect on your confidence in each topic. We'll use your responses — 
-            along with the number of weeks left until your exam — to build a detailed, personalised revision plan
-            designed to boost your progress and maximise your results.
+            This quiz helps us build a personalised learning plan for our tutorials.
           </p>
-          <button className="start-button" onClick={() => setShowSplash(false)}>Start Quiz</button>
+  
+          <p>
+            Based on your confidence in each topic — and how many weeks are left until your exam — 
+            we’ll create a weekly plan that maximises your progress and exam results.
+          </p>
+  
+          <button className="start-button" onClick={() => setShowSplash(false)}>
+            Start Quiz
+          </button>
         </div>
       </div>
     );
@@ -120,11 +127,15 @@ export default function TakeQuiz() {
       <div className="thank-you-screen">
         <div className="thank-you-content">
           <h1>Thanks for completing the quiz!</h1>
+  
           <p>
-            Your results are now being used to generate a personalised topic-by-topic revision plan 
-            based on your confidence levels and the number of weeks left until your exam.
+            Your responses are being used to generate a detailed plan,
+            tailored to your goals and time left before your exam.
           </p>
-          <p>We’ll notify you once your plan is ready!</p>
+  
+          <p>
+            You’ll see your plan on your dashboard shortly.
+          </p>
         </div>
       </div>
     );
