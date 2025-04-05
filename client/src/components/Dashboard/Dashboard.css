@@ -1,10 +1,13 @@
+.page-container {
+    gap: 1.5rem;
+}
+
 /* Highlight banner like "Night Owl Mode" */
 .highlight-banner {
     background-color: #e7e5fb;
     color: #333;
     padding: 1.5rem;
     border-radius: 1rem;
-    margin-bottom: 2rem;
     font-size: 1rem;
     font-weight: 500;
 }
@@ -97,4 +100,87 @@
     font-size: 0.85rem;
     color: #888;
     font-style: italic;
+}
+
+.quiz-section {
+    margin-top: 2rem;
+    padding: 2rem;
+    background-color: #f9f9f9;
+    border-radius: 1rem;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+.section-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.section-subtitle {
+    font-size: 1rem;
+    color: #555;
+    margin-bottom: 1rem;
+}
+
+.quiz-card {
+    background-color: white;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s ease;
+}
+
+.quiz-card:hover {
+    transform: translateY(-2px);
+}
+
+.quiz-text h3 {
+    margin: 0 0 0.5rem;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.quiz-text p {
+    margin-bottom: 1rem;
+    color: #444;
+}
+
+.quiz-button {
+    margin-top: 0.25rem;
+    padding: 0.25rem 0.75rem;
+    background-color: #4caf50;
+    color: white;
+    border: none;
+    border-radius: 0.5rem;
+    font-size: 0.8rem;
+    cursor: not-allowed;
+}
+
+.feature-card {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    background-color: #fff;
+    padding: 1.25rem;
+    border-radius: 1rem;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    animation: fadeInUp 0.3s ease forwards;
+    opacity: 0;
+    transform: translateY(10px);
+}
+
+.feature-card:hover {
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
