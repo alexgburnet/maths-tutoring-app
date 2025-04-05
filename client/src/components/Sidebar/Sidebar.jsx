@@ -36,7 +36,7 @@ export default function Sidebar({ isOpen, toggleSidebar, routes }) {
 
   const handleMobilenav = () => {
     if (window.innerWidth < 768) {
-      toggleSidebar();
+      toggleSidebar(false);
     }
   };
 
