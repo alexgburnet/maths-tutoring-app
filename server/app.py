@@ -15,6 +15,7 @@ from monzo import MonzoClient
 from zoom import create_zoom_meeting, delete_zoom_meeting
 from werkzeug.utils import secure_filename
 from functools import wraps
+from datetime import date
 
 from mathpix_helper import extract_latex_from_pdf
 from openai_helper import generate_followup_questions_latex
@@ -87,13 +88,16 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
+    target_grade = db.Column(db.Integer)
+    maths_paper = db.Column(db.String(1))
+    exam_date = db.Column(db.Date)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
-    
+
 class Booking(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     student_name = db.Column(db.String(100), nullable=False)
