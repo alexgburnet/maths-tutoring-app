@@ -975,9 +975,12 @@ def delete_question(current_user, id):
     # Delete any topic assessments linked to this question
     TopicAssessment.query.filter_by(question_id=question.id).delete()
 
+    # ✅ Delete subtopics that reference this question
+    WeeklyPlanSubtopic.query.filter_by(question_id=question.id).delete()
+
     db.session.delete(question)
     db.session.commit()
-    return jsonify({"message": "Question, rubrics, and assessments deleted"})
+    return jsonify({"message": "Question, rubrics, assessments, and plan subtopics deleted"})
 
 
 @app.route("/api/admin/questions", methods=["GET"])
@@ -1090,12 +1093,17 @@ def quiz_get_topics(current_user):
     elif use_user_paper:
         tier = current_user.maths_paper
     else:
-        tier = None  # No tier filtering
+        tier = None
 
     if tier:
         query = query.join(Topic.questions).filter(TopicQuestion.tier == tier).distinct()
 
     topics = query.all()
+
+    # ✅ Add logging here
+    print(f"📦 Returning {len(topics)} topics for tier: {tier}")
+    for topic in topics:
+        print(f" - {topic.id}: {topic.name} ({topic.category})")
 
     return jsonify([
         {"id": t.id, "name": t.name, "category": t.category}
@@ -1290,32 +1298,36 @@ def view_plan_for_user(user):
     entries = (
         WeeklyPlanEntry.query
         .filter_by(plan_id=plan.id)
-        .options(joinedload(WeeklyPlanEntry.topic))
-        .options(joinedload(WeeklyPlanEntry.subtopics).joinedload(WeeklyPlanSubtopic.question))
+        .options(
+            joinedload(WeeklyPlanEntry.topic),
+            joinedload(WeeklyPlanEntry.subtopics).joinedload(WeeklyPlanSubtopic.question)
+        )
         .order_by(WeeklyPlanEntry.week_number)
         .all()
     )
 
     weekly = {}
     for entry in entries:
-        topic = entry.topic
         week = entry.week_number
         if week not in weekly:
             weekly[week] = []
 
+        subtopic_details = [
+            {
+                "id": s.question.id,
+                "title": s.question.title,
+                "tier": s.question.tier,
+                "weight": s.question.weight
+            }
+            for s in entry.subtopics
+        ]
+
         weekly[week].append({
-            "topic_id": topic.id,
-            "topic_name": topic.name,
-            "category": topic.category,
+            "topic_id": entry.topic.id,
+            "topic_name": entry.topic.name,
+            "category": entry.topic.category,
             "focus_area": entry.focus_area,
-            "subtopics": [
-                {
-                    "id": sub.question.id,
-                    "title": sub.question.title,
-                    "tier": sub.question.tier,
-                    "weight": sub.question.weight
-                } for sub in entry.subtopics
-            ]
+            "subtopics": subtopic_details
         })
 
     return jsonify({

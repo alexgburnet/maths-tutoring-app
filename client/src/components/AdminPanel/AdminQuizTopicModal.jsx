@@ -47,7 +47,9 @@ export default function AdminQuizTopicModal({ topicId, onClose }) {
     const addQuestion = async () => {
         const title = prompt("Enter subtopic/question title:");
         if (!title) return;
-        await QuizService.createQuestion({ title, topic_id: topicId, tier: newQuestionTier });
+    
+        const tierValue = newQuestionTier === "Foundation" ? "F" : "H";
+        await QuizService.createQuestion({ title, topic_id: topicId, tier: tierValue });
         await load();
     };
 
@@ -131,7 +133,7 @@ export default function AdminQuizTopicModal({ topicId, onClose }) {
 
                             {openRubricId === q.id && (
                                 <div className="rubric-editor">
-                                    {[0, 1, 2, 3, 4, 5].map(score => (
+                                    {[1, 2, 3, 4, 5].map(score => (
                                         <div key={score} className="rubric-row">
                                             <span className="rubric-score">{score}</span>
                                             <input
