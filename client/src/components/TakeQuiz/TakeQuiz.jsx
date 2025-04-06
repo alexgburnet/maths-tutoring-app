@@ -19,13 +19,13 @@ export default function TakeQuiz() {
 
   useEffect(() => {
     const load = async () => {
-      const allTopics = await QuizService.getQuizTopics();
+      const allTopics = await QuizService.getQuizTopics({ useUserPaper: true });
       const topicList = [];
       const rubricMap = {};
       const initialAnswers = {};
 
       for (let topic of allTopics) {
-      const qs = await QuizService.getQuizQuestions(topic.id);
+      const qs = await QuizService.getQuizQuestions(topic.id, {useUserPaper: true});
       for (let q of qs) {
           const r = await QuizService.getQuizRubrics(q.id);
           rubricMap[q.id] = Object.fromEntries(r.map(d => [d.score, d.description]));

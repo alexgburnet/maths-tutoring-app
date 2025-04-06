@@ -83,6 +83,11 @@ class UserService {
         const res = await axios.get('/admin/users');
         return res.data;
       }
+    
+    async updateUser(id, data) {
+        const res = await axios.put(`/admin/users/${id}`, data);
+        return res.data;
+    }
 }
 
 export default new UserService();

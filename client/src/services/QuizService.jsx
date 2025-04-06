@@ -62,15 +62,21 @@ const QuizService = {
   },
 
   // ──────────── USER: QUIZ FLOW ────────────
-  getQuizTopics: async () => {
-    const response = await axios.get('/quiz/topics');
+  getQuizTopics: async ({ tier = null, useUserPaper = false } = {}) => {
+    const params = {};
+    if (tier) params.tier = tier;
+    if (useUserPaper) params.use_user_paper = true;
+  
+    const response = await axios.get('/quiz/topics', { params });
     return response.data;
   },
-
-  getQuizQuestions: async (topicId) => {
-    const response = await axios.get('/quiz/questions', {
-      params: { topic_id: topicId },
-    });
+  
+  getQuizQuestions: async (topicId, { tier = null, useUserPaper = false } = {}) => {
+    const params = { topic_id: topicId };
+    if (tier) params.tier = tier;
+    if (useUserPaper) params.use_user_paper = true;
+  
+    const response = await axios.get('/quiz/questions', { params });
     return response.data;
   },
 

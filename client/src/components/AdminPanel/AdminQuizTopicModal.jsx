@@ -7,6 +7,7 @@ export default function AdminQuizTopicModal({ topicId, onClose }) {
     const [questions, setQuestions] = useState([]);
     const [openRubricId, setOpenRubricId] = useState(null);
     const [rubrics, setRubrics] = useState({});
+    const [newQuestionTier, setNewQuestionTier] = useState('Foundation'); // Default tier
 
     const load = async () => {
         const allTopics = await QuizService.getTopics();
@@ -46,7 +47,7 @@ export default function AdminQuizTopicModal({ topicId, onClose }) {
     const addQuestion = async () => {
         const title = prompt("Enter subtopic/question title:");
         if (!title) return;
-        await QuizService.createQuestion({ title, topic_id: topicId, tier: 'Foundation' });
+        await QuizService.createQuestion({ title, topic_id: topicId, tier: newQuestionTier });
         await load();
     };
 
@@ -58,16 +59,16 @@ export default function AdminQuizTopicModal({ topicId, onClose }) {
 
     const updateWeight = (questionId, newWeight) => {
         setQuestions(prev =>
-          prev.map(q =>
-            q.id === questionId ? { ...q, weight: newWeight } : q
-          )
+            prev.map(q =>
+                q.id === questionId ? { ...q, weight: newWeight } : q
+            )
         );
-      };
-      
-      const saveWeight = async (questionId) => {
+    };
+
+    const saveWeight = async (questionId) => {
         const question = questions.find(q => q.id === questionId);
         await QuizService.updateQuestion(questionId, { weight: parseFloat(question.weight) });
-      };
+    };
 
     useEffect(() => {
         load();
@@ -80,14 +81,22 @@ export default function AdminQuizTopicModal({ topicId, onClose }) {
                     <h2>{topic?.name} – Subtopics</h2>
                     <button className="close-button" onClick={onClose}>×</button>
                 </div>
-                <button onClick={addQuestion} className="create-button">+ Add Subtopic</button>
+
+                <div className="add-question-controls">
+                    <select
+                        value={newQuestionTier}
+                        onChange={(e) => setNewQuestionTier(e.target.value)}
+                        className="tier-select"
+                    >
+                        <option value="Foundation">Foundation</option>
+                        <option value="Higher">Higher</option>
+                    </select>
+                    <button onClick={addQuestion} className="create-button">+ Add Subtopic</button>
+                </div>
+
                 <ul className="question-list">
                     {questions.map((q) => (
-                        <li
-                            key={q.id}
-                            className="question-item"
-                            style={{ cursor: 'pointer' }}
-                        >
+                        <li key={q.id} className="question-item">
                             <div className="question-header" onClick={async () => {
                                 if (openRubricId === q.id) {
                                     setOpenRubricId(null);
@@ -96,7 +105,10 @@ export default function AdminQuizTopicModal({ topicId, onClose }) {
                                     setOpenRubricId(q.id);
                                 }
                             }}>
-                                <div className="question-title">{q.title}</div>
+                                <div className="question-title">
+                                    {q.title} - 
+                                    <span className="tier-badge">{q.tier}</span>
+                                </div>
                                 <div className="question-actions">
                                     <button onClick={(e) => deleteQuestion(e, q.id)}>Delete</button>
                                 </div>
@@ -106,12 +118,12 @@ export default function AdminQuizTopicModal({ topicId, onClose }) {
                                 <div className="subtopic-weight-row">
                                     <label htmlFor={`weight-${q.id}`}>Weight:</label>
                                     <input
-                                    type="number"
-                                    id={`weight-${q.id}`}
-                                    step="0.1"
-                                    min="0"
-                                    value={q.weight || ''}
-                                    onChange={(e) => updateWeight(q.id, e.target.value)}
+                                        type="number"
+                                        id={`weight-${q.id}`}
+                                        step="0.1"
+                                        min="0"
+                                        value={q.weight || ''}
+                                        onChange={(e) => updateWeight(q.id, e.target.value)}
                                     />
                                     <button onClick={() => saveWeight(q.id)}>Save Weight</button>
                                 </div>
