@@ -5,8 +5,9 @@ import PlanService from '/src/services/PlanService';
 import './UserModal.css';
 
 export default function UserModal({ user, onClose }) {
-    const [form, setForm] = useState({ ...user });
+    const [form, setForm] = useState(null);
     const [plan, setPlan] = useState(null);
+    const [loading, setLoading] = useState(true);
 
     const handleChange = (e) => {
         setForm({ ...form, [e.target.name]: e.target.value });
@@ -24,30 +25,73 @@ export default function UserModal({ user, onClose }) {
     const regeneratePlan = async () => {
         await PlanService.regeneratePlanForUser(form.id);
         alert("Plan regenerated");
-        await fetchPlan(); // refresh it
+        await fetchPlan();
     };
 
     const fetchPlan = async () => {
-        const data = await PlanService.getPlanForUser(form.id);
-        setPlan(data);
+        try {
+            const data = await PlanService.getPlanForUser(user.id);
+            setPlan(data);
+        } catch (err) {
+            console.warn("No plan found for user", err);
+            setPlan(null);
+        }
     };
 
     useEffect(() => {
+        const fetchUserDetails = async () => {
+            try {
+                const detailedUser = await UserService.getUser(user.id);
+                setForm(detailedUser);
+            } catch (err) {
+                console.error("Failed to fetch user:", err);
+                alert("Could not load user details.");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchUserDetails();
         fetchPlan();
     }, [user.id]);
+
+    if (loading || !form) {
+        return (
+            <div className="modal-overlay">
+                <div className="modal">Loading user details...</div>
+            </div>
+        );
+    }
 
     return (
         <div className="modal-overlay">
             <div className="modal">
-                <h2>Edit User – {user.name} {user.surname}</h2>
+                <h2>Edit User – {form.name} {form.surname}</h2>
+
                 <label>Target Grade:
-                    <input type="number" name="target_grade" value={form.target_grade || ''} onChange={handleChange} />
+                    <input
+                        type="number"
+                        name="target_grade"
+                        value={form.target_grade || ''}
+                        onChange={handleChange}
+                    />
                 </label>
+
                 <label>Exam Date:
-                    <input type="date" name="exam_date" value={form.exam_date || ''} onChange={handleChange} />
+                    <input
+                        type="date"
+                        name="exam_date"
+                        value={form.exam_date || ''}
+                        onChange={handleChange}
+                    />
                 </label>
+
                 <label>Maths Paper:
-                    <select name="maths_paper" value={form.maths_paper || ''} onChange={handleChange}>
+                    <select
+                        name="maths_paper"
+                        value={form.maths_paper || ''}
+                        onChange={handleChange}
+                    >
                         <option value="">--</option>
                         <option value="F">Foundation</option>
                         <option value="H">Higher</option>
@@ -71,7 +115,16 @@ export default function UserModal({ user, onClose }) {
                                 <ul>
                                     {topics.map(topic => (
                                         <li key={topic.topic_id}>
-                                            {topic.topic_name} – {topic.category}
+                                            <strong>{topic.topic_name}</strong> – {topic.category}
+                                            {topic.subtopics && topic.subtopics.length > 0 && (
+                                                <ul className="subtopic-list">
+                                                    {topic.subtopics.map(sub => (
+                                                        <li key={sub.id}>
+                                                            • {sub.title} <small>({sub.tier}, weight {sub.weight})</small>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            )}
                                         </li>
                                     ))}
                                 </ul>

@@ -190,6 +190,14 @@ class WeeklyPlanEntry(db.Model):
     plan = db.relationship("WeeklyPlan", backref="entries")
     topic = db.relationship("Topic")
 
+class WeeklyPlanSubtopic(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    entry_id = db.Column(db.Integer, db.ForeignKey("weekly_plan_entry.id"), nullable=False)
+    question_id = db.Column(db.Integer, db.ForeignKey("topic_question.id"), nullable=False)
+
+    entry = db.relationship("WeeklyPlanEntry", backref="subtopics")
+    question = db.relationship("TopicQuestion")
+
 class TopicQuestion(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     topic_id = db.Column(db.Integer, db.ForeignKey("topic.id"), nullable=False)
@@ -1136,6 +1144,132 @@ def quiz_get_rubrics(current_user, question_id):
         for r in rubrics
     ])
 
+def calculate_topic_priorities(user_id):
+    from collections import defaultdict
+
+    user = User.query.get_or_404(user_id)
+    if not user.maths_paper:
+        return []  # Or raise an error — no paper tier selected
+
+    tier_label = "Foundation" if user.maths_paper == "F" else "Higher"
+
+    assessments = TopicAssessment.query.join(SelfAssessment).filter(
+        SelfAssessment.user_id == user_id
+    ).all()
+
+    topic_data = defaultdict(lambda: {
+        "weighted_sum": 0.0,
+        "total_weight": 0.0,
+        "subtopics": [],
+        "topic_name": "",
+        "category": "",
+        "topic_weight": 1.0
+    })
+
+    for ta in assessments:
+        question = ta.question
+
+        # ⛔ Skip if question is not in the user’s tier
+        if question.tier != tier_label:
+            continue
+
+        topic = question.topic
+        confidence = ta.confidence_score
+        weight = question.weight
+
+        topic_data[topic.id]["topic_name"] = topic.name
+        topic_data[topic.id]["category"] = topic.category
+        topic_data[topic.id]["weighted_sum"] += confidence * weight
+        topic_data[topic.id]["total_weight"] += weight
+        topic_data[topic.id]["topic_weight"] = topic.weight or 1.0
+
+        topic_data[topic.id]["subtopics"].append({
+            "question_id": question.id,
+            "title": question.title,
+            "confidence": confidence,
+            "weight": weight
+        })
+
+    topic_priorities = []
+
+    for topic_id, data in topic_data.items():
+        if not data["subtopics"]:
+            continue  # Skip topics with no questions in the user's tier
+
+        avg_score = data["weighted_sum"] / data["total_weight"] if data["total_weight"] else 0
+        priority = (1 - avg_score / 5) * data["topic_weight"]
+
+        sorted_subtopics = sorted(data["subtopics"], key=lambda x: (x["confidence"], -x["weight"]))
+        focus_area = sorted_subtopics[0]["title"] if sorted_subtopics else None
+
+        topic_priorities.append({
+            "topic_id": topic_id,
+            "topic_name": data["topic_name"],
+            "category": data["category"],
+            "avg_score": round(avg_score, 2),
+            "weight": data["topic_weight"],
+            "priority": round(priority, 4),
+            "focus_area": focus_area,
+            "subtopics": sorted_subtopics
+        })
+
+    topic_priorities.sort(key=lambda x: x["priority"], reverse=True)
+    return topic_priorities
+
+def generate_plan_for_user(user):
+    if not user.exam_date or not user.target_grade:
+        return jsonify({"error": "User must have an exam date and target grade set"}), 400
+
+    from datetime import date
+
+    today = date.today()
+    days_left = (user.exam_date - today).days
+    weeks_left = max(days_left // 7, 1)  # Ensure at least 1 week
+    logging.info(f"📅 Generating plan for user {user.id} over {weeks_left} weeks until {user.exam_date}")
+
+    # Calculate topic priorities based on weighted confidence scores
+    priorities = calculate_topic_priorities(user.id)
+    if not priorities:
+        return jsonify({"error": "No assessment data found for user"}), 400
+
+    # Distribute topics across weeks
+    weekly_distribution = distribute_topics_over_weeks(priorities, weeks_left)
+
+    # Create a new WeeklyPlan entry
+    plan = WeeklyPlan(
+        user_id=user.id,
+        exam_date=user.exam_date,
+        target_grade=str(user.target_grade),
+        generated_at=datetime.utcnow()
+    )
+    db.session.add(plan)
+    db.session.flush()  # Get plan.id
+
+    # Add WeeklyPlanEntry + WeeklyPlanSubtopic
+    for week_num, topics in enumerate(weekly_distribution, start=1):
+        for topic in topics:
+            entry = WeeklyPlanEntry(
+                plan_id=plan.id,
+                week_number=week_num,
+                topic_id=topic["topic_id"],
+                focus_area=topic.get("focus_area")  # Optional fallback string
+            )
+            db.session.add(entry)
+            db.session.flush()  # Get entry.id for subtopics
+
+            # Add top 2 weakest subtopics as subtopic entries
+            subtopics = topic.get("subtopics", [])[:2]
+            for sub in subtopics:
+                subtopic = WeeklyPlanSubtopic(
+                    entry_id=entry.id,
+                    question_id=sub["question_id"]
+                )
+                db.session.add(subtopic)
+
+    db.session.commit()
+    logging.info(f"✅ Weekly plan with subtopics generated for user {user.id}")
+    return jsonify({"message": "Weekly plan generated with subtopics"})
+
 @app.route("/api/plan/generate", methods=["POST"])
 @token_required
 def generate_plan(current_user):
@@ -1156,7 +1290,8 @@ def view_plan_for_user(user):
     entries = (
         WeeklyPlanEntry.query
         .filter_by(plan_id=plan.id)
-        .join(Topic)
+        .options(joinedload(WeeklyPlanEntry.topic))
+        .options(joinedload(WeeklyPlanEntry.subtopics).joinedload(WeeklyPlanSubtopic.question))
         .order_by(WeeklyPlanEntry.week_number)
         .all()
     )
@@ -1167,11 +1302,20 @@ def view_plan_for_user(user):
         week = entry.week_number
         if week not in weekly:
             weekly[week] = []
+
         weekly[week].append({
             "topic_id": topic.id,
             "topic_name": topic.name,
             "category": topic.category,
-            "focus_area": entry.focus_area
+            "focus_area": entry.focus_area,
+            "subtopics": [
+                {
+                    "id": sub.question.id,
+                    "title": sub.question.title,
+                    "tier": sub.question.tier,
+                    "weight": sub.question.weight
+                } for sub in entry.subtopics
+            ]
         })
 
     return jsonify({
@@ -1193,6 +1337,21 @@ def view_current_plan(current_user):
 def admin_view_plan(current_user, user_id):
     user = User.query.get_or_404(user_id)
     return view_plan_for_user(user)
+
+@app.route("/api/admin/users/<int:user_id>", methods=["GET"])
+@admin_required
+def get_user_info(current_user, user_id):
+    user = User.query.get_or_404(user_id)
+
+    return jsonify({
+        "id": user.id,
+        "name": user.name,
+        "surname": user.surname,
+        "email": user.email,
+        "target_grade": user.target_grade,
+        "maths_paper": user.maths_paper,
+        "exam_date": user.exam_date.strftime("%Y-%m-%d") if user.exam_date else None
+    })
     
 def calculate_topic_priorities(user_id):
     from collections import defaultdict
@@ -1201,27 +1360,53 @@ def calculate_topic_priorities(user_id):
         SelfAssessment.user_id == user_id
     ).all()
 
-    topic_scores = defaultdict(list)
-    topic_weights = {}
+    topic_data = defaultdict(lambda: {
+        "weighted_sum": 0.0,
+        "total_weight": 0.0,
+        "subtopics": [],
+        "topic_name": "",
+        "category": "",
+        "topic_weight": 1.0
+    })
 
     for ta in assessments:
-        topic = ta.question.topic
-        topic_scores[topic.id].append(ta.confidence_score)
-        topic_weights[topic.id] = topic.weight
+        question = ta.question
+        topic = question.topic
+        confidence = ta.confidence_score
+        weight = question.weight
+
+        topic_data[topic.id]["topic_name"] = topic.name
+        topic_data[topic.id]["category"] = topic.category
+        topic_data[topic.id]["weighted_sum"] += confidence * weight
+        topic_data[topic.id]["total_weight"] += weight
+        topic_data[topic.id]["topic_weight"] = topic.weight or 1.0
+
+        topic_data[topic.id]["subtopics"].append({
+            "question_id": question.id,
+            "title": question.title,
+            "confidence": confidence,
+            "weight": weight
+        })
 
     topic_priorities = []
-    for topic_id, scores in topic_scores.items():
-        avg_score = sum(scores) / len(scores)
-        weight = topic_weights.get(topic_id, 1.0)
-        priority = (1 - (avg_score / 5)) * weight
-        topic = Topic.query.get(topic_id)
+
+    for topic_id, data in topic_data.items():
+        avg_score = data["weighted_sum"] / data["total_weight"] if data["total_weight"] else 0
+        priority = (1 - avg_score / 5) * data["topic_weight"]
+
+        # Sort subtopics by lowest confidence
+        sorted_subtopics = sorted(data["subtopics"], key=lambda x: (x["confidence"], -x["weight"]))
+        focus_area = sorted_subtopics[0]["title"] if sorted_subtopics else None
+
         topic_priorities.append({
             "topic_id": topic_id,
-            "topic_name": topic.name,
-            "category": topic.category,
-            "avg_score": avg_score,
-            "weight": weight,
-            "priority": priority
+            "topic_name": data["topic_name"],
+            "category": data["category"],
+            "avg_score": round(avg_score, 2),
+            "weight": data["topic_weight"],
+            "priority": round(priority, 4),
+            "focus_area": focus_area,
+            "subtopics": sorted_subtopics  # 🔑 used in generate_plan_for_user
         })
 
     topic_priorities.sort(key=lambda x: x["priority"], reverse=True)
