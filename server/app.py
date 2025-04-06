@@ -917,25 +917,56 @@ def add_topic(current_user):
 @admin_required
 def delete_topic(current_user, id):
     topic = Topic.query.get_or_404(id)
+    logging.info(f"🗑️ Admin attempting to delete Topic ID {id} ('{topic.name}')")
 
-    # Get all questions for the topic
+    # 1. Delete Weekly Plan Entries related to this topic
+    plan_entries = WeeklyPlanEntry.query.filter_by(topic_id=topic.id).all()
+    if plan_entries:
+        entry_ids = [entry.id for entry in plan_entries]
+        logging.info(f"🧹 Found related WeeklyPlanEntry IDs: {entry_ids}")
+        
+        # 1a. Delete associated WeeklyPlanSubtopics first
+        num_subtopics = WeeklyPlanSubtopic.query.filter(WeeklyPlanSubtopic.entry_id.in_(entry_ids)).delete(synchronize_session=False)
+        logging.info(f"🧹 Deleted {num_subtopics} related WeeklyPlanSubtopics")
+
+        # 1b. Delete the WeeklyPlanEntries themselves
+        num_entries = WeeklyPlanEntry.query.filter(WeeklyPlanEntry.id.in_(entry_ids)).delete(synchronize_session=False)
+        logging.info(f"🧹 Deleted {num_entries} related WeeklyPlanEntries")
+    else:
+        logging.info("🧹 No related WeeklyPlanEntries found.")
+
+    # 2. Delete Questions related to this topic (and their dependents)
     questions = TopicQuestion.query.filter_by(topic_id=topic.id).all()
+    if questions:
+        question_ids = [q.id for q in questions]
+        logging.info(f"🧹 Found related TopicQuestion IDs: {question_ids}")
+        
+        # 2a. Delete associated Rubrics (ConfidenceDescriptor)
+        num_rubrics = ConfidenceDescriptor.query.filter(ConfidenceDescriptor.question_id.in_(question_ids)).delete(synchronize_session=False)
+        logging.info(f"🧹 Deleted {num_rubrics} related ConfidenceDescriptors (Rubrics)")
 
-    # For each question:
-    for question in questions:
-        # Delete rubrics
-        ConfidenceDescriptor.query.filter_by(question_id=question.id).delete()
+        # 2b. Delete associated Assessments (TopicAssessment)
+        num_assessments = TopicAssessment.query.filter(TopicAssessment.question_id.in_(question_ids)).delete(synchronize_session=False)
+        logging.info(f"🧹 Deleted {num_assessments} related TopicAssessments")
+        
+        # 2c. Delete associated WeeklyPlanSubtopics (if any survived plan deletion - defensive check)
+        num_subtopics_q = WeeklyPlanSubtopic.query.filter(WeeklyPlanSubtopic.question_id.in_(question_ids)).delete(synchronize_session=False)
+        if num_subtopics_q > 0:
+             logging.info(f"🧹 Deleted {num_subtopics_q} WeeklyPlanSubtopics linked directly to questions (defensive cleanup)")
 
-        # Delete topic assessments
-        TopicAssessment.query.filter_by(question_id=question.id).delete()
+        # 2d. Delete the Questions themselves
+        num_questions = TopicQuestion.query.filter(TopicQuestion.id.in_(question_ids)).delete(synchronize_session=False)
+        logging.info(f"🧹 Deleted {num_questions} related TopicQuestions")
+    else:
+         logging.info("🧹 No related TopicQuestions found.")
 
-    # Delete the questions
-    TopicQuestion.query.filter_by(topic_id=topic.id).delete()
-
-    # Delete the topic itself
+    # 3. Delete the Topic itself
     db.session.delete(topic)
+    logging.info(f"🧹 Deleting Topic ID {id}")
+    
     db.session.commit()
-    return jsonify({"message": "Topic, questions, rubrics, and assessments deleted"})
+    logging.info(f"✅ Topic deletion complete for ID {id}")
+    return jsonify({"message": "Topic and all related data deleted successfully"})
 
 @app.route("/api/admin/questions", methods=["POST"])
 @admin_required
@@ -1081,30 +1112,28 @@ def submit_quiz(current_user):
 @app.route("/api/quiz/topics", methods=["GET"])
 @token_required
 def quiz_get_topics(current_user):
-    tier_param = request.args.get("tier")
     use_user_paper = request.args.get("use_user_paper", "false").lower() == "true"
 
-    query = Topic.query
-
-    if tier_param == "F":
-        tier = "Foundation"
-    elif tier_param == "H":
-        tier = "Higher"
-    elif use_user_paper:
-        tier = current_user.maths_paper
+    if not use_user_paper or not current_user.maths_paper:
+        # Default behavior or error if paper isn't set/requested
+        topics = Topic.query.all()
+        logging.warning("Quiz topics: Not using user paper or paper not set. Returning all topics.")
     else:
-        tier = None
+        user_paper = current_user.maths_paper
+        logging.info(f"Quiz topics: Fetching for user paper '{user_paper}'")
+        
+        if user_paper == 'F':
+            # Foundation users only get topics with at least one 'F' question
+            query = Topic.query.join(Topic.questions).filter(TopicQuestion.tier == 'F').distinct()
+            logging.info("  -> Filtering for topics containing Foundation questions only.")
+        else: # user_paper == 'H'
+            # Higher users get topics with at least one 'F' OR 'H' question (effectively all topics with any questions)
+            query = Topic.query.join(Topic.questions).distinct()
+            logging.info("  -> Including topics containing Foundation OR Higher questions.")
+            
+        topics = query.all()
 
-    if tier:
-        query = query.join(Topic.questions).filter(TopicQuestion.tier == tier).distinct()
-
-    topics = query.all()
-
-    # ✅ Add logging here
-    print(f"📦 Returning {len(topics)} topics for tier: {tier}")
-    for topic in topics:
-        print(f" - {topic.id}: {topic.name} ({topic.category})")
-
+    logging.info(f"📦 Returning {len(topics)} topics for quiz")
     return jsonify([
         {"id": t.id, "name": t.name, "category": t.category}
         for t in topics
@@ -1117,23 +1146,29 @@ def quiz_get_questions(current_user):
     if not topic_id:
         return jsonify({"error": "Missing topic_id"}), 400
 
-    tier_param = request.args.get("tier")
     use_user_paper = request.args.get("use_user_paper", "false").lower() == "true"
-
-    if tier_param == "F":
-        tier = "Foundation"
-    elif tier_param == "H":
-        tier = "Higher"
-    elif use_user_paper:
-        tier = current_user.maths_paper
-    else:
-        tier = None  # No tier filtering
+    logging.info(f"Quiz questions: Fetching for topic {topic_id}, use_user_paper={use_user_paper}")
 
     query = TopicQuestion.query.filter_by(topic_id=topic_id)
-    if tier:
-        query = query.filter_by(tier=tier)
+
+    if use_user_paper and current_user.maths_paper:
+        user_paper = current_user.maths_paper
+        logging.info(f"  -> Filtering based on user paper: {user_paper}")
+        if user_paper == 'F':
+            # Foundation users get only Foundation questions
+            query = query.filter(TopicQuestion.tier == 'F')
+            logging.info("    -> Applying filter: tier == 'F'")
+        else: # user_paper == 'H'
+            # Higher users get Foundation AND Higher questions
+            query = query.filter(TopicQuestion.tier.in_(['F', 'H']))
+            logging.info("    -> Applying filter: tier IN ('F', 'H')")
+    else:
+        logging.warning("  -> Not filtering by tier (no user paper or not requested).")
+        # Optionally return no questions or all questions if paper isn't specified?
+        # Current behaviour returns all questions for the topic.
 
     questions = query.all()
+    logging.info(f"  -> Returning {len(questions)} questions for topic {topic_id}")
     return jsonify([
         {
             "id": q.id,
@@ -1156,14 +1191,20 @@ def calculate_topic_priorities(user_id):
     from collections import defaultdict
 
     user = User.query.get_or_404(user_id)
+    logging.info(f"🧠 Calculating priorities for user {user_id} (Paper: {user.maths_paper})")
     if not user.maths_paper:
-        return []  # Or raise an error — no paper tier selected
+        logging.warning(f"⚠️ User {user_id} has no maths paper set. Cannot calculate priorities.")
+        return []
 
-    tier_label = "Foundation" if user.maths_paper == "F" else "Higher"
+    # Determine which tiers to include based on user's paper
+    include_foundation = True # Higher includes Foundation
+    include_higher = (user.maths_paper == 'H')
+    logging.info(f"🏷️ Including tiers: Foundation={include_foundation}, Higher={include_higher}")
 
     assessments = TopicAssessment.query.join(SelfAssessment).filter(
         SelfAssessment.user_id == user_id
     ).all()
+    logging.info(f"📊 Found {len(assessments)} total assessment entries for user {user_id}")
 
     topic_data = defaultdict(lambda: {
         "weighted_sum": 0.0,
@@ -1176,12 +1217,18 @@ def calculate_topic_priorities(user_id):
 
     for ta in assessments:
         question = ta.question
-
-        # ⛔ Skip if question is not in the user’s tier
-        if question.tier != tier_label:
-            continue
-
         topic = question.topic
+        logging.debug(f"  - Considering Question ID {question.id} ('{question.title}', Tier: {question.tier}) for Topic ID {topic.id} ('{topic.name}')")
+
+        # ⛔ Skip if question tier is not included based on user's paper
+        is_foundation = (question.tier == 'F')
+        is_higher = (question.tier == 'H')
+
+        if not ((is_foundation and include_foundation) or (is_higher and include_higher)):
+            logging.debug(f"    -> Skipping Question ID {question.id} - Tier {question.tier} not included for paper {user.maths_paper}")
+            continue
+        logging.debug(f"    -> Including Question ID {question.id} - Tier match for paper {user.maths_paper}")
+
         confidence = ta.confidence_score
         weight = question.weight
 
@@ -1199,16 +1246,30 @@ def calculate_topic_priorities(user_id):
         })
 
     topic_priorities = []
+    logging.info(f"⚙️ Processing {len(topic_data)} topics after initial assessment aggregation")
 
     for topic_id, data in topic_data.items():
         if not data["subtopics"]:
-            continue  # Skip topics with no questions in the user's tier
+            logging.info(f"  -> Skipping Topic ID {topic_id} ('{data['topic_name']}') - No relevant subtopics after tier filtering")
+            continue
+
+        # Log the raw subtopics list for this topic before sorting
+        if topic_id == 8: # Specific log for Topic 8
+            logging.debug(f"    Raw subtopics for Topic 8 before sort: {data['subtopics']}")
 
         avg_score = data["weighted_sum"] / data["total_weight"] if data["total_weight"] else 0
         priority = (1 - avg_score / 5) * data["topic_weight"]
+        logging.info(f"  -> Topic ID {topic_id} ('{data['topic_name']}'): Avg Score={avg_score:.2f}, Weight={data['topic_weight']:.2f}, Priority={priority:.4f}")
 
+        # Sort subtopics by lowest confidence, then highest weight
         sorted_subtopics = sorted(data["subtopics"], key=lambda x: (x["confidence"], -x["weight"]))
+        
+        # Log the sorted subtopics list
+        if topic_id == 8: # Specific log for Topic 8
+             logging.debug(f"    Sorted subtopics for Topic 8 after sort: {sorted_subtopics}")
+
         focus_area = sorted_subtopics[0]["title"] if sorted_subtopics else None
+        # logging.debug(f"    Sorted subtopics for Topic {topic_id}: {[(s['question_id'], s['confidence']) for s in sorted_subtopics]}") # Keep original debug log too
 
         topic_priorities.append({
             "topic_id": topic_id,
@@ -1222,6 +1283,7 @@ def calculate_topic_priorities(user_id):
         })
 
     topic_priorities.sort(key=lambda x: x["priority"], reverse=True)
+    logging.info(f"🏆 Final calculated priorities ({len(topic_priorities)} topics): {[(p['topic_id'], p['priority']) for p in topic_priorities]}")
     return topic_priorities
 
 def generate_plan_for_user(user):
@@ -1230,20 +1292,38 @@ def generate_plan_for_user(user):
 
     from datetime import date
 
+    # Delete all existing plans and related records for this user
+    existing_plans = WeeklyPlan.query.filter_by(user_id=user.id).all()
+    if existing_plans:
+        plan_ids = [plan.id for plan in existing_plans]
+
+        # Find all entry IDs associated with these plans
+        entry_ids = [entry.id for entry in WeeklyPlanEntry.query.filter(WeeklyPlanEntry.plan_id.in_(plan_ids)).all()]
+
+        if entry_ids:
+            # 1. Delete subtopics linked to these entries
+            WeeklyPlanSubtopic.query.filter(WeeklyPlanSubtopic.entry_id.in_(entry_ids)).delete(synchronize_session=False)
+
+        # 2. Delete entries linked to these plans
+        WeeklyPlanEntry.query.filter(WeeklyPlanEntry.plan_id.in_(plan_ids)).delete(synchronize_session=False)
+
+        # 3. Delete the plans themselves
+        WeeklyPlan.query.filter(WeeklyPlan.id.in_(plan_ids)).delete(synchronize_session=False)
+
+        db.session.commit()
+
     today = date.today()
     days_left = (user.exam_date - today).days
     weeks_left = max(days_left // 7, 1)  # Ensure at least 1 week
     logging.info(f"📅 Generating plan for user {user.id} over {weeks_left} weeks until {user.exam_date}")
 
-    # Calculate topic priorities based on weighted confidence scores
+    # 1. Calculate and sort topic priorities (already does this)
     priorities = calculate_topic_priorities(user.id)
     if not priorities:
-        return jsonify({"error": "No assessment data found for user"}), 400
+        logging.warning(f"⚠️ No priorities calculated for user {user.id}. Cannot generate plan.")
+        return jsonify({"error": "No assessment data found for user or priorities could not be calculated"}), 400
 
-    # Distribute topics across weeks
-    weekly_distribution = distribute_topics_over_weeks(priorities, weeks_left)
-
-    # Create a new WeeklyPlan entry
+    # 2. Create the new WeeklyPlan entry
     plan = WeeklyPlan(
         user_id=user.id,
         exam_date=user.exam_date,
@@ -1253,30 +1333,55 @@ def generate_plan_for_user(user):
     db.session.add(plan)
     db.session.flush()  # Get plan.id
 
-    # Add WeeklyPlanEntry + WeeklyPlanSubtopic
-    for week_num, topics in enumerate(weekly_distribution, start=1):
-        for topic in topics:
-            entry = WeeklyPlanEntry(
-                plan_id=plan.id,
-                week_number=week_num,
-                topic_id=topic["topic_id"],
-                focus_area=topic.get("focus_area")  # Optional fallback string
-            )
-            db.session.add(entry)
-            db.session.flush()  # Get entry.id for subtopics
+    # 3. Assign topics linearly: one per week, highest priority first
+    logging.info(f"Assigning top {min(len(priorities), weeks_left)} topics to {weeks_left} weeks.")
+    for week_num in range(1, weeks_left + 1):
+        if week_num > len(priorities): # Stop if we run out of prioritized topics
+            logging.info(f"No more topics to assign after week {week_num - 1}.")
+            break
+            
+        # Get the topic for the current week based on priority ranking
+        topic = priorities[week_num - 1]
+        logging.info(f"  -> Assigning Topic ID {topic['topic_id']} (Priority: {topic['priority']:.4f}) to Week {week_num}")
 
-            # Add top 2 weakest subtopics as subtopic entries
-            subtopics = topic.get("subtopics", [])[:2]
-            for sub in subtopics:
+        # Create the WeeklyPlanEntry for this topic and week
+        entry = WeeklyPlanEntry(
+            plan_id=plan.id,
+            week_number=week_num,
+            topic_id=topic["topic_id"],
+            focus_area=topic.get("focus_area") # Weakest subtopic title
+        )
+        db.session.add(entry)
+        db.session.flush()  # Get entry.id for subtopics
+
+        # Add top 2 unique weakest subtopics (same logic as before)
+        sorted_subtopics = topic.get("subtopics", [])
+        unique_weakest_ids = []
+        seen_ids = set()
+        for sub in sorted_subtopics:
+            if sub["question_id"] not in seen_ids:
+                unique_weakest_ids.append(sub["question_id"])
+                seen_ids.add(sub["question_id"])
+            if len(unique_weakest_ids) == 2:
+                break
+        
+        logging.info(f"      -> Selecting top 2 unique weakest subtopic IDs: {unique_weakest_ids}")
+        added_subtopic_ids = set()
+
+        for sub in topic.get("subtopics", []):
+            question_id = sub["question_id"]
+            if question_id in unique_weakest_ids and question_id not in added_subtopic_ids:
+                logging.info(f"        -> Adding Weakest Subtopic ID {question_id} ('{sub['title']}')")
                 subtopic = WeeklyPlanSubtopic(
                     entry_id=entry.id,
-                    question_id=sub["question_id"]
+                    question_id=question_id
                 )
                 db.session.add(subtopic)
+                added_subtopic_ids.add(question_id)
 
     db.session.commit()
-    logging.info(f"✅ Weekly plan with subtopics generated for user {user.id}")
-    return jsonify({"message": "Weekly plan generated with subtopics"})
+    logging.info(f"✅ Weekly plan generated linearly for user {user.id}")
+    return jsonify({"message": "Weekly plan generated with linear topic assignment"})
 
 @app.route("/api/plan/generate", methods=["POST"])
 @token_required
@@ -1363,86 +1468,42 @@ def get_user_info(current_user, user_id):
         "target_grade": user.target_grade,
         "maths_paper": user.maths_paper,
         "exam_date": user.exam_date.strftime("%Y-%m-%d") if user.exam_date else None
-    })
+    })    
+
+@app.route("/api/admin/plan/delete/<int:user_id>", methods=["DELETE"])
+@admin_required
+def delete_user_plan(current_user, user_id):
+    logging.info(f"🗑️ Admin requested deletion of plan for user {user_id}")
+    user = User.query.get_or_404(user_id)
     
-def calculate_topic_priorities(user_id):
-    from collections import defaultdict
+    existing_plans = WeeklyPlan.query.filter_by(user_id=user.id).all()
+    if not existing_plans:
+        logging.info(f"🤷 No plan found for user {user_id} to delete")
+        return jsonify({"message": "No plan found for this user"}), 404
 
-    assessments = TopicAssessment.query.join(SelfAssessment).filter(
-        SelfAssessment.user_id == user_id
-    ).all()
+    plan_ids = [plan.id for plan in existing_plans]
+    logging.info(f"🧹 Deleting plans with IDs: {plan_ids}")
 
-    topic_data = defaultdict(lambda: {
-        "weighted_sum": 0.0,
-        "total_weight": 0.0,
-        "subtopics": [],
-        "topic_name": "",
-        "category": "",
-        "topic_weight": 1.0
-    })
+    # Find all entry IDs associated with these plans
+    entry_ids = [entry.id for entry in WeeklyPlanEntry.query.filter(WeeklyPlanEntry.plan_id.in_(plan_ids)).all()]
+    logging.info(f"🧹 Found associated entry IDs: {entry_ids}")
 
-    for ta in assessments:
-        question = ta.question
-        topic = question.topic
-        confidence = ta.confidence_score
-        weight = question.weight
+    if entry_ids:
+        # 1. Delete subtopics linked to these entries
+        num_subtopics = WeeklyPlanSubtopic.query.filter(WeeklyPlanSubtopic.entry_id.in_(entry_ids)).delete(synchronize_session=False)
+        logging.info(f"🧹 Deleted {num_subtopics} subtopics")
 
-        topic_data[topic.id]["topic_name"] = topic.name
-        topic_data[topic.id]["category"] = topic.category
-        topic_data[topic.id]["weighted_sum"] += confidence * weight
-        topic_data[topic.id]["total_weight"] += weight
-        topic_data[topic.id]["topic_weight"] = topic.weight or 1.0
+    # 2. Delete entries linked to these plans
+    num_entries = WeeklyPlanEntry.query.filter(WeeklyPlanEntry.plan_id.in_(plan_ids)).delete(synchronize_session=False)
+    logging.info(f"🧹 Deleted {num_entries} entries")
 
-        topic_data[topic.id]["subtopics"].append({
-            "question_id": question.id,
-            "title": question.title,
-            "confidence": confidence,
-            "weight": weight
-        })
+    # 3. Delete the plans themselves
+    num_plans = WeeklyPlan.query.filter(WeeklyPlan.id.in_(plan_ids)).delete(synchronize_session=False)
+    logging.info(f"🧹 Deleted {num_plans} plans")
 
-    topic_priorities = []
-
-    for topic_id, data in topic_data.items():
-        avg_score = data["weighted_sum"] / data["total_weight"] if data["total_weight"] else 0
-        priority = (1 - avg_score / 5) * data["topic_weight"]
-
-        # Sort subtopics by lowest confidence
-        sorted_subtopics = sorted(data["subtopics"], key=lambda x: (x["confidence"], -x["weight"]))
-        focus_area = sorted_subtopics[0]["title"] if sorted_subtopics else None
-
-        topic_priorities.append({
-            "topic_id": topic_id,
-            "topic_name": data["topic_name"],
-            "category": data["category"],
-            "avg_score": round(avg_score, 2),
-            "weight": data["topic_weight"],
-            "priority": round(priority, 4),
-            "focus_area": focus_area,
-            "subtopics": sorted_subtopics  # 🔑 used in generate_plan_for_user
-        })
-
-    topic_priorities.sort(key=lambda x: x["priority"], reverse=True)
-    return topic_priorities
-
-def distribute_topics_over_weeks(priorities, num_weeks):
-    from math import ceil
-
-    total_priority = sum(t["priority"] for t in priorities)
-    if total_priority == 0:
-        # Even distribution fallback
-        per_week = ceil(len(priorities) / num_weeks)
-        return [priorities[i:i+per_week] for i in range(0, len(priorities), per_week)]
-
-    topic_chunks = [[] for _ in range(num_weeks)]
-    week_scores = [0] * num_weeks
-
-    for topic in priorities:
-        proportion = topic["priority"] / total_priority
-        week_index = week_scores.index(min(week_scores))
-        topic_chunks[week_index].append(topic)
-        week_scores[week_index] += proportion
-
-    return topic_chunks
+    db.session.commit()
+    logging.info(f"✅ Plan deletion complete for user {user_id}")
+    return jsonify({"message": "Weekly plan deleted successfully"})
 
 def start_payment_checker():
     def check_loop():
@@ -1464,3 +1525,15 @@ def start_payment_checker():
 with app.app_context():
     print("🚀 Starting background payment checker...")
     start_payment_checker()
+
+# Temporary Debug Route - List all questions
+@app.route("/debug/list-all-questions")
+# @admin_required # Temporarily removed for easy access
+def debug_list_questions(): # Removed current_user argument
+    questions = TopicQuestion.query.options(joinedload(TopicQuestion.topic)).order_by(TopicQuestion.topic_id, TopicQuestion.id).all()
+    output = []
+    for q in questions:
+        output.append(
+            f"QID: {q.id: <3} | Tier: {q.tier: <10} | Weight: {q.weight: <4} | Topic: {q.topic.id: <2} ({q.topic.name}) | Title: {q.title}"
+        )
+    return "<pre>" + "\n".join(output) + "</pre>"

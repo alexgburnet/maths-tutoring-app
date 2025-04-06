@@ -28,6 +28,19 @@ export default function UserModal({ user, onClose }) {
         await fetchPlan();
     };
 
+    const deletePlan = async () => {
+        if (window.confirm("Are you sure you want to delete this user's plan permanently?")) {
+            try {
+                await PlanService.deletePlanForUser(form.id);
+                alert("Plan deleted");
+                setPlan(null); // Clear the plan display
+            } catch (err) {
+                console.error("Failed to delete plan:", err);
+                alert(`Could not delete plan: ${err.response?.data?.message || err.message}`);
+            }
+        }
+    };
+
     const fetchPlan = async () => {
         try {
             const data = await PlanService.getPlanForUser(user.id);
@@ -101,6 +114,7 @@ export default function UserModal({ user, onClose }) {
                 <div className="modal-actions">
                     <button onClick={save}>Save</button>
                     <button onClick={regeneratePlan}>Regenerate Plan</button>
+                    <button onClick={deletePlan} className="button-danger">Delete Plan</button>
                     <button onClick={onClose}>Close</button>
                 </div>
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import QuizService from '/src/services/QuizService';
+import PlanService from '/src/services/PlanService';
 import './TakeQuiz.css';
 
 import 'katex/dist/katex.min.css';
@@ -88,8 +89,26 @@ export default function TakeQuiz() {
       question_id: parseInt(questionId),
       confidence_score: score,
     }));
-    await QuizService.submitAssessment(payload);
-    setShowThankYou(true);
+
+    try {
+      console.log("Submitting quiz assessment...");
+      await QuizService.submitAssessment(payload);
+      console.log("Assessment submitted successfully.");
+
+      try {
+        console.log("Generating weekly plan...");
+        await PlanService.generatePlan();
+        console.log("Plan generation triggered successfully.");
+      } catch (planError) {
+        console.error("❌ Failed to trigger plan generation:", planError);
+      }
+
+      setShowThankYou(true);
+
+    } catch (submitError) {
+      console.error("❌ Failed to submit quiz assessment:", submitError);
+      alert("Failed to submit quiz results. Please try again.");
+    }
   };
 
   if (loading) return <div className="loading">Loading quiz...</div>;
@@ -100,7 +119,7 @@ export default function TakeQuiz() {
         <div className="splash-content">
           <h1>Self-Assessment Quiz</h1>
           <p>This quiz helps us build a personalised learning plan for our tutorials.</p>
-          <p>Based on your confidence in each topic — and how many weeks are left until your exam — we’ll create a weekly plan that maximises your progress and exam results.</p>
+          <p>Based on your confidence in each topic — and how many weeks are left until your exam — we'll create a weekly plan that maximises your progress and exam results.</p>
           <button className="start-button" onClick={() => setShowSplash(false)}>Start Quiz</button>
         </div>
       </div>
@@ -112,8 +131,8 @@ export default function TakeQuiz() {
       <div className="thank-you-screen">
         <div className="thank-you-content">
           <h1>Thanks for completing the quiz!</h1>
-          <p>Your responses are being used to generate a detailed plan, tailored to your goals and time left before your exam.</p>
-          <p>You’ll see your plan on your dashboard shortly.</p>
+          <p>Your responses have been saved. We're now generating a detailed plan, tailored to your goals and time left before your exam.</p>
+          <p>You'll see your plan on your dashboard shortly.</p>
         </div>
       </div>
     );

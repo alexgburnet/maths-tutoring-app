@@ -39,6 +39,15 @@ const PlanService = {
   getPlanForUser: async (userId) => {
     const response = await axios.get(`/admin/plan/view/${userId}`);
     return response.data;
+  },
+
+  /**
+   * Delete the weekly plan for a specific user by ID.
+   * @param {number} userId
+   */
+  deletePlanForUser: async (userId) => {
+    const response = await axios.delete(`/admin/plan/delete/${userId}`);
+    return response.data;
   }
 };
 
