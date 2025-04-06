@@ -80,7 +80,6 @@ def update_paid_status_for_bookings():
     
     db.session.commit()
 
-
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100))
@@ -301,6 +300,7 @@ def register():
         "name": user.name,
         "surname": user.surname,
         "email": user.email,
+        "maths_paper": user.maths_paper,
         "exp": datetime.utcnow() + timedelta(hours=2)
     }
 
@@ -427,6 +427,7 @@ def refresh():
             "name": user.name,
             "surname": user.surname,
             "email": user.email,
+            "maths_paper": user.maths_paper,
             "exp": datetime.utcnow() + timedelta(minutes=15),
         }, SECRET_KEY, algorithm="HS256")
 
@@ -450,6 +451,19 @@ def logout():
     )
 
     return response
+
+@app.route("/api/admin/users/<int:user_id>", methods=["PUT"])
+@admin_required
+def update_user_info(current_user, user_id):
+    user = User.query.get_or_404(user_id)
+    data = request.json
+
+    user.target_grade = data.get("target_grade")
+    user.exam_date = datetime.strptime(data.get("exam_date"), "%Y-%m-%d") if data.get("exam_date") else None
+    user.maths_paper = data.get("maths_paper")
+
+    db.session.commit()
+    return jsonify({"message": "User updated"})
 
 @app.route("/api/bookings", methods=["POST"])
 @token_required
@@ -899,17 +913,21 @@ def delete_topic(current_user, id):
     # Get all questions for the topic
     questions = TopicQuestion.query.filter_by(topic_id=topic.id).all()
 
-    # For each question, delete associated rubrics
+    # For each question:
     for question in questions:
+        # Delete rubrics
         ConfidenceDescriptor.query.filter_by(question_id=question.id).delete()
+
+        # Delete topic assessments
+        TopicAssessment.query.filter_by(question_id=question.id).delete()
 
     # Delete the questions
     TopicQuestion.query.filter_by(topic_id=topic.id).delete()
 
-    # Delete the topic
+    # Delete the topic itself
     db.session.delete(topic)
     db.session.commit()
-    return jsonify({"message": "Topic, questions, and rubrics deleted"})
+    return jsonify({"message": "Topic, questions, rubrics, and assessments deleted"})
 
 @app.route("/api/admin/questions", methods=["POST"])
 @admin_required
@@ -946,18 +964,31 @@ def delete_question(current_user, id):
     # Delete associated rubrics
     ConfidenceDescriptor.query.filter_by(question_id=question.id).delete()
 
+    # Delete any topic assessments linked to this question
+    TopicAssessment.query.filter_by(question_id=question.id).delete()
+
     db.session.delete(question)
     db.session.commit()
-    return jsonify({"message": "Question and rubrics deleted"})
+    return jsonify({"message": "Question, rubrics, and assessments deleted"})
 
 
 @app.route("/api/admin/questions", methods=["GET"])
 @admin_required
 def get_questions(current_user):
     topic_id = request.args.get("topic_id")
+    tier_param = request.args.get("tier")  # Accepts "F" or "H"
+    
     query = TopicQuestion.query
+
     if topic_id:
         query = query.filter_by(topic_id=topic_id)
+
+    if tier_param:
+        if tier_param == "F":
+            query = query.filter(TopicQuestion.tier == "Foundation")
+        elif tier_param == "H":
+            query = query.filter(TopicQuestion.tier == "Higher")
+
     questions = query.all()
     return jsonify([
         {
@@ -1039,7 +1070,25 @@ def submit_quiz(current_user):
 @app.route("/api/quiz/topics", methods=["GET"])
 @token_required
 def quiz_get_topics(current_user):
-    topics = Topic.query.all()
+    tier_param = request.args.get("tier")
+    use_user_paper = request.args.get("use_user_paper", "false").lower() == "true"
+
+    query = Topic.query
+
+    if tier_param == "F":
+        tier = "Foundation"
+    elif tier_param == "H":
+        tier = "Higher"
+    elif use_user_paper:
+        tier = current_user.maths_paper
+    else:
+        tier = None  # No tier filtering
+
+    if tier:
+        query = query.join(Topic.questions).filter(TopicQuestion.tier == tier).distinct()
+
+    topics = query.all()
+
     return jsonify([
         {"id": t.id, "name": t.name, "category": t.category}
         for t in topics
@@ -1052,7 +1101,23 @@ def quiz_get_questions(current_user):
     if not topic_id:
         return jsonify({"error": "Missing topic_id"}), 400
 
-    questions = TopicQuestion.query.filter_by(topic_id=topic_id).all()
+    tier_param = request.args.get("tier")
+    use_user_paper = request.args.get("use_user_paper", "false").lower() == "true"
+
+    if tier_param == "F":
+        tier = "Foundation"
+    elif tier_param == "H":
+        tier = "Higher"
+    elif use_user_paper:
+        tier = current_user.maths_paper
+    else:
+        tier = None  # No tier filtering
+
+    query = TopicQuestion.query.filter_by(topic_id=topic_id)
+    if tier:
+        query = query.filter_by(tier=tier)
+
+    questions = query.all()
     return jsonify([
         {
             "id": q.id,
@@ -1070,7 +1135,118 @@ def quiz_get_rubrics(current_user, question_id):
         {"score": r.score, "description": r.description}
         for r in rubrics
     ])
+
+@app.route("/api/plan/generate", methods=["POST"])
+@token_required
+def generate_plan(current_user):
+    return generate_plan_for_user(current_user)
+
+@app.route("/api/admin/plan/generate/<int:user_id>", methods=["POST"])
+@admin_required
+def admin_generate_plan(current_user, user_id):
+    user = User.query.get_or_404(user_id)
+    return generate_plan_for_user(user)
+
+def view_plan_for_user(user):
+    plan = WeeklyPlan.query.filter_by(user_id=user.id).order_by(WeeklyPlan.generated_at.desc()).first()
+
+    if not plan:
+        return jsonify({"message": "No plan found"}), 404
+
+    entries = (
+        WeeklyPlanEntry.query
+        .filter_by(plan_id=plan.id)
+        .join(Topic)
+        .order_by(WeeklyPlanEntry.week_number)
+        .all()
+    )
+
+    weekly = {}
+    for entry in entries:
+        topic = entry.topic
+        week = entry.week_number
+        if week not in weekly:
+            weekly[week] = []
+        weekly[week].append({
+            "topic_id": topic.id,
+            "topic_name": topic.name,
+            "category": topic.category,
+            "focus_area": entry.focus_area
+        })
+
+    return jsonify({
+        "plan": {
+            "exam_date": plan.exam_date.strftime("%Y-%m-%d"),
+            "target_grade": plan.target_grade,
+            "generated_at": plan.generated_at.strftime("%Y-%m-%d %H:%M")
+        },
+        "weekly_plan": weekly
+    })
+
+@app.route("/api/plan/view", methods=["GET"])
+@token_required
+def view_current_plan(current_user):
+    return view_plan_for_user(current_user)
+
+@app.route("/api/admin/plan/view/<int:user_id>", methods=["GET"])
+@admin_required
+def admin_view_plan(current_user, user_id):
+    user = User.query.get_or_404(user_id)
+    return view_plan_for_user(user)
     
+def calculate_topic_priorities(user_id):
+    from collections import defaultdict
+
+    assessments = TopicAssessment.query.join(SelfAssessment).filter(
+        SelfAssessment.user_id == user_id
+    ).all()
+
+    topic_scores = defaultdict(list)
+    topic_weights = {}
+
+    for ta in assessments:
+        topic = ta.question.topic
+        topic_scores[topic.id].append(ta.confidence_score)
+        topic_weights[topic.id] = topic.weight
+
+    topic_priorities = []
+    for topic_id, scores in topic_scores.items():
+        avg_score = sum(scores) / len(scores)
+        weight = topic_weights.get(topic_id, 1.0)
+        priority = (1 - (avg_score / 5)) * weight
+        topic = Topic.query.get(topic_id)
+        topic_priorities.append({
+            "topic_id": topic_id,
+            "topic_name": topic.name,
+            "category": topic.category,
+            "avg_score": avg_score,
+            "weight": weight,
+            "priority": priority
+        })
+
+    topic_priorities.sort(key=lambda x: x["priority"], reverse=True)
+    return topic_priorities
+
+def distribute_topics_over_weeks(priorities, num_weeks):
+    from math import ceil
+
+    total_priority = sum(t["priority"] for t in priorities)
+    if total_priority == 0:
+        # Even distribution fallback
+        per_week = ceil(len(priorities) / num_weeks)
+        return [priorities[i:i+per_week] for i in range(0, len(priorities), per_week)]
+
+    topic_chunks = [[] for _ in range(num_weeks)]
+    week_scores = [0] * num_weeks
+
+    for topic in priorities:
+        proportion = topic["priority"] / total_priority
+        week_index = week_scores.index(min(week_scores))
+        topic_chunks[week_index].append(topic)
+        week_scores[week_index] += proportion
+
+    return topic_chunks
+
 def start_payment_checker():
     def check_loop():
         while True:
