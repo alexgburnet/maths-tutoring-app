@@ -85,7 +85,8 @@ Available Topics and Priorities:
 {topics_input}
 
 Task:
-Generate a weekly study plan covering the next {weeks_left} weeks. Distribute the prioritized topics across the weeks logically. Start with higher priority topics but consider spreading the workload and revisiting topics if beneficial (though simple week-by-week allocation is acceptable). Aim to cover 1-3 main topics per week. For each topic assigned to a week, suggest 1-3 specific weakest subtopic IDs (from the provided list for that topic) to focus on.
+Generate a weekly study plan covering the next {weeks_left} weeks. Distribute the prioritized topics across the weeks logically. Start with higher priority topics but consider spreading the workload and revisiting topics if beneficial (though simple week-by-week allocation is acceptable). Aim to cover 1-2 main topics per week. For each topic assigned to a week, suggest 1-2 specific weakest subtopic IDs (from the provided list for that topic) to focus on.
+If there are too many topics to cover in the available weeks, only include the highest priority topics and their weakest subtopics, such that the weekly content is manageable and achievable in one hour.
 
 Output Format:
 Return ONLY a JSON object representing the plan. The JSON object should have a single key "weekly_plan". The value of "weekly_plan" should be an object where keys are week numbers (as strings, e.g., "1", "2") and values are lists of topics for that week. Each topic in the list should be an object with:

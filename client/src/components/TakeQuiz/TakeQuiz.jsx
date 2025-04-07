@@ -257,21 +257,96 @@ export default function TakeQuiz() {
 
 function renderWithMath(text) {
   if (!text) return null;
-  const parts = text.split(/(\$\$[\s\S]*?\$\$)|(\$[^$]*\$)|(\\\[[\s\S]*?\\\])|(\\\([^)]*\\\))/g);
+  
+  // Regex to capture text parts and all math delimiters
+  // Captures: $$...$$, $...$, \[...\] or \(...\)
+  const regex = /(\$\$|\$|\\\[|\\\]|\\\(|\\\))/g;
+  const parts = text.split(regex).filter(Boolean); // Split and remove empty strings
 
-  return parts.filter(Boolean).map((part, index) => {
-    if (part.startsWith('$$') && part.endsWith('$$')) {
-      return <BlockMath key={index} math={part.slice(2, -2)} />;
+  const elements = [];
+  let isInlineMath = false;
+  let isBlockMathDisplay = false; // For $$...$$
+  let isBlockMathBracket = false; // For \[...\]
+  let currentText = '';
+  let mathContent = '';
+
+  parts.forEach((part, index) => {
+    if (part === '$') {
+      if (isInlineMath) {
+        // End of inline math
+        if (currentText) elements.push(<span key={`text-${elements.length}`}>{currentText}</span>);
+        elements.push(<InlineMath key={`imath-${elements.length}`} math={mathContent} />);
+        currentText = '';
+        mathContent = '';
+        isInlineMath = false;
+      } else {
+        // Start of inline math
+        isInlineMath = true;
+      }
+    } else if (part === '$$') {
+        if (isBlockMathDisplay) {
+           // End of display math
+           if (currentText) elements.push(<p key={`text-${elements.length}`}>{currentText}</p>); // Paragraph before block math
+           elements.push(<BlockMath key={`bmath-${elements.length}`} math={mathContent} />);
+           currentText = '';
+           mathContent = '';
+           isBlockMathDisplay = false;
+        } else {
+           // Start of display math
+           isBlockMathDisplay = true;
+        }
+    } else if (part === '\\(') {
+        // Start of inline math (alternative)
+        isInlineMath = true;
+    } else if (part === '\\)') {
+         if (isInlineMath) {
+           // End of inline math (alternative)
+           if (currentText) elements.push(<span key={`text-${elements.length}`}>{currentText}</span>);
+           elements.push(<InlineMath key={`imath-${elements.length}`} math={mathContent} />);
+           currentText = '';
+           mathContent = '';
+           isInlineMath = false;
+         }
+    } else if (part === '\\[') {
+         // Start of block math (alternative)
+         isBlockMathBracket = true;
+    } else if (part === '\\]') {
+         if (isBlockMathBracket) {
+           // End of block math (alternative)
+           if (currentText) elements.push(<p key={`text-${elements.length}`}>{currentText}</p>); // Paragraph before block math
+           elements.push(<BlockMath key={`bmath-${elements.length}`} math={mathContent} />);
+           currentText = '';
+           mathContent = '';
+           isBlockMathBracket = false;
+         }
+    } else {
+      // Content part
+      if (isInlineMath || isBlockMathDisplay || isBlockMathBracket) {
+        mathContent += part;
+      } else {
+        currentText += part;
+      }
     }
-    if (part.startsWith('$') && part.endsWith('$')) {
-      return <InlineMath key={index} math={part.slice(1, -1)} />;
-    }
-     if (part.startsWith('\\[') && part.endsWith('\\]')) {
-       return <BlockMath key={index} math={part.slice(2, -2)} />;
-     }
-     if (part.startsWith('\\(') && part.endsWith('\\)')) {
-       return <InlineMath key={index} math={part.slice(2, -2)} />;
-     }
-    return part.split('\\n').map((line, lineIndex) => line.trim() ? <p key={`${index}-${lineIndex}`}>{line}</p> : null);
-  }).flat().filter(Boolean);
+  });
+
+  // Add any remaining text
+  if (currentText) {
+      // Wrap remaining text in paragraph if it seems substantial or contains newlines
+      if (currentText.includes('\n') || currentText.length > 50) { 
+           const lines = currentText.split('\n').map((line, i) => line.trim() ? <p key={`p-${elements.length}-${i}`}>{line}</p> : null);
+           elements.push(...lines.filter(Boolean));
+      } else {
+           elements.push(<span key={`text-${elements.length}`}>{currentText}</span>);
+      }
+  }
+  
+  // Handle unterminated math environments (optional: log error or render as text)
+  if (isInlineMath || isBlockMathDisplay || isBlockMathBracket) {
+       console.warn("Unterminated math environment detected in text:", text);
+       // Append the raw remaining content as text
+       elements.push(<span key={`error-${elements.length}`}>{mathContent}</span>);
+  }
+
+  // Wrap the result in a single div for layout control if needed
+  return <div className="math-render-container">{elements}</div>;
 }
