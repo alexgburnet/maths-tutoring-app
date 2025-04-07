@@ -18,7 +18,7 @@ from functools import wraps
 from datetime import date
 
 from mathpix_helper import extract_latex_from_pdf
-from openai_helper import generate_followup_questions_latex
+from openai_helper import generate_followup_questions_latex, generate_weekly_plan_openai
 from pdflatex_helper import render_latex_to_pdf
 from sqlalchemy import and_
 import logging
@@ -1296,92 +1296,140 @@ def generate_plan_for_user(user):
     existing_plans = WeeklyPlan.query.filter_by(user_id=user.id).all()
     if existing_plans:
         plan_ids = [plan.id for plan in existing_plans]
-
-        # Find all entry IDs associated with these plans
         entry_ids = [entry.id for entry in WeeklyPlanEntry.query.filter(WeeklyPlanEntry.plan_id.in_(plan_ids)).all()]
-
         if entry_ids:
-            # 1. Delete subtopics linked to these entries
             WeeklyPlanSubtopic.query.filter(WeeklyPlanSubtopic.entry_id.in_(entry_ids)).delete(synchronize_session=False)
-
-        # 2. Delete entries linked to these plans
         WeeklyPlanEntry.query.filter(WeeklyPlanEntry.plan_id.in_(plan_ids)).delete(synchronize_session=False)
-
-        # 3. Delete the plans themselves
         WeeklyPlan.query.filter(WeeklyPlan.id.in_(plan_ids)).delete(synchronize_session=False)
-
         db.session.commit()
+        logging.info(f"🧹 Cleared existing plan for user {user.id}")
 
     today = date.today()
-    days_left = (user.exam_date - today).days
+    # Ensure exam_date is date object if it's datetime
+    exam_date_obj = user.exam_date
+    if isinstance(exam_date_obj, datetime):
+        exam_date_obj = exam_date_obj.date()
+        
+    days_left = (exam_date_obj - today).days
     weeks_left = max(days_left // 7, 1)  # Ensure at least 1 week
-    logging.info(f"📅 Generating plan for user {user.id} over {weeks_left} weeks until {user.exam_date}")
+    logging.info(f"📅 Generating plan for user {user.id} ({user.email}) over {weeks_left} weeks until {exam_date_obj}")
 
-    # 1. Calculate and sort topic priorities (already does this)
+    # 1. Calculate and sort topic priorities
     priorities = calculate_topic_priorities(user.id)
     if not priorities:
         logging.warning(f"⚠️ No priorities calculated for user {user.id}. Cannot generate plan.")
         return jsonify({"error": "No assessment data found for user or priorities could not be calculated"}), 400
 
-    # 2. Create the new WeeklyPlan entry
+    # Prepare user_info dict for OpenAI helper
+    user_info = {
+        "target_grade": user.target_grade,
+        "exam_date": user.exam_date, # Pass the original datetime or date object
+    }
+
+    # 2. Call OpenAI to generate the plan structure
+    logging.info(f"🧠 Requesting plan generation from OpenAI for user {user.id}...")
+    openai_plan_data = generate_weekly_plan_openai(user_info, priorities, weeks_left)
+
+    if not openai_plan_data or "weekly_plan" not in openai_plan_data:
+        logging.error(f"❌ Failed to generate plan using OpenAI for user {user.id}. OpenAI helper returned invalid data.")
+        # Optional: Fallback to linear assignment? Or just return error.
+        # For now, return error:
+        return jsonify({"error": "Failed to generate plan structure via AI assistant."}), 500
+
+    ai_generated_plan = openai_plan_data["weekly_plan"] # This is the dict { "1": [...], "2": [...] }
+    logging.info(f"✅ OpenAI returned plan structure for user {user.id}. Proceeding to save.")
+
+    # 3. Create the new WeeklyPlan DB entry
     plan = WeeklyPlan(
         user_id=user.id,
-        exam_date=user.exam_date,
+        exam_date=user.exam_date, # Use the original date/datetime
         target_grade=str(user.target_grade),
         generated_at=datetime.utcnow()
     )
     db.session.add(plan)
-    db.session.flush()  # Get plan.id
+    db.session.flush()  # Get plan.id before creating entries
+    logging.info(f"Created WeeklyPlan DB record (ID: {plan.id}) for user {user.id}")
 
-    # 3. Assign topics linearly: one per week, highest priority first
-    logging.info(f"Assigning top {min(len(priorities), weeks_left)} topics to {weeks_left} weeks.")
-    for week_num in range(1, weeks_left + 1):
-        if week_num > len(priorities): # Stop if we run out of prioritized topics
-            logging.info(f"No more topics to assign after week {week_num - 1}.")
-            break
+    # 4. Process the AI-generated plan and save DB entries
+    all_topic_ids = {t.id for t in Topic.query.all()} # Get valid topic IDs once
+    all_question_ids = {q.id for q in TopicQuestion.query.all()} # Get valid question IDs once
+    
+    for week_str, weekly_topics in ai_generated_plan.items():
+        try:
+            week_num = int(week_str)
+            if not isinstance(weekly_topics, list):
+                logging.warning(f"⚠️ Skipping week '{week_str}' for user {user.id}: invalid format (expected list).")
+                continue
             
-        # Get the topic for the current week based on priority ranking
-        topic = priorities[week_num - 1]
-        logging.info(f"  -> Assigning Topic ID {topic['topic_id']} (Priority: {topic['priority']:.4f}) to Week {week_num}")
+            logging.info(f"  Processing Week {week_num} for plan {plan.id}")
 
-        # Create the WeeklyPlanEntry for this topic and week
-        entry = WeeklyPlanEntry(
-            plan_id=plan.id,
-            week_number=week_num,
-            topic_id=topic["topic_id"],
-            focus_area=topic.get("focus_area") # Weakest subtopic title
-        )
-        db.session.add(entry)
-        db.session.flush()  # Get entry.id for subtopics
+            for topic_info in weekly_topics:
+                if not isinstance(topic_info, dict) or "topic_id" not in topic_info or "subtopic_ids" not in topic_info:
+                    logging.warning(f"    ⚠️ Skipping invalid topic entry in week {week_num}: {topic_info}")
+                    continue
 
-        # Add top 2 unique weakest subtopics (same logic as before)
-        sorted_subtopics = topic.get("subtopics", [])
-        unique_weakest_ids = []
-        seen_ids = set()
-        for sub in sorted_subtopics:
-            if sub["question_id"] not in seen_ids:
-                unique_weakest_ids.append(sub["question_id"])
-                seen_ids.add(sub["question_id"])
-            if len(unique_weakest_ids) == 2:
-                break
-        
-        logging.info(f"      -> Selecting top 2 unique weakest subtopic IDs: {unique_weakest_ids}")
-        added_subtopic_ids = set()
+                topic_id = topic_info["topic_id"]
+                focus_area = topic_info.get("focus_area") # Optional
+                subtopic_ids = topic_info["subtopic_ids"]
 
-        for sub in topic.get("subtopics", []):
-            question_id = sub["question_id"]
-            if question_id in unique_weakest_ids and question_id not in added_subtopic_ids:
-                logging.info(f"        -> Adding Weakest Subtopic ID {question_id} ('{sub['title']}')")
-                subtopic = WeeklyPlanSubtopic(
-                    entry_id=entry.id,
-                    question_id=question_id
+                # Validate topic_id
+                if topic_id not in all_topic_ids:
+                    logging.warning(f"    ⚠️ Skipping topic ID {topic_id} in week {week_num}: Topic not found in database.")
+                    continue
+
+                # Validate subtopic_ids format
+                if not isinstance(subtopic_ids, list):
+                     logging.warning(f"    ⚠️ Skipping topic ID {topic_id} in week {week_num}: subtopic_ids is not a list ({subtopic_ids}).")
+                     continue
+                
+                valid_subtopic_ids = [sid for sid in subtopic_ids if isinstance(sid, int) and sid in all_question_ids]
+                if len(valid_subtopic_ids) != len(subtopic_ids):
+                     logging.warning(f"    ⚠️ Filtered invalid/unknown subtopic IDs for topic {topic_id} in week {week_num}. Original: {subtopic_ids}, Valid: {valid_subtopic_ids}")
+
+                if not valid_subtopic_ids: # Don't create entry if no valid subtopics provided by AI
+                    logging.warning(f"    ⚠️ No valid subtopics provided by AI for topic {topic_id} in week {week_num}. Skipping entry creation.")
+                    continue
+
+                # Create WeeklyPlanEntry
+                entry = WeeklyPlanEntry(
+                    plan_id=plan.id,
+                    week_number=week_num,
+                    topic_id=topic_id,
+                    focus_area=focus_area
                 )
-                db.session.add(subtopic)
-                added_subtopic_ids.add(question_id)
+                db.session.add(entry)
+                db.session.flush()  # Get entry.id
+                logging.info(f"    -> Created WeeklyPlanEntry (ID: {entry.id}) for Topic {topic_id} in Week {week_num}")
 
-    db.session.commit()
-    logging.info(f"✅ Weekly plan generated linearly for user {user.id}")
-    return jsonify({"message": "Weekly plan generated with linear topic assignment"})
+                # Create WeeklyPlanSubtopic entries
+                added_subtopic_count = 0
+                for sub_id in valid_subtopic_ids:
+                    subtopic_entry = WeeklyPlanSubtopic(
+                        entry_id=entry.id,
+                        question_id=sub_id
+                    )
+                    db.session.add(subtopic_entry)
+                    added_subtopic_count += 1
+                
+                if added_subtopic_count > 0:
+                    logging.info(f"      -> Added {added_subtopic_count} WeeklyPlanSubtopic records for Entry {entry.id}")
+                
+        except ValueError:
+            logging.warning(f"⚠️ Skipping invalid week number '{week_str}' in OpenAI response for user {user.id}.")
+        except Exception as e:
+            logging.error(f"❌ Unexpected error processing week '{week_str}' for user {user.id}: {e}", exc_info=True)
+            # Optionally rollback this week's additions or the whole plan?
+            # For now, log and continue to next week if possible.
+
+    # 5. Commit all changes
+    try:
+        db.session.commit()
+        logging.info(f"✅ Successfully generated and saved AI-powered weekly plan for user {user.id} (Plan ID: {plan.id})")
+        return jsonify({"message": "Weekly plan generated successfully using AI assistant.", "plan_id": plan.id})
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"❌ Failed to commit AI-generated plan for user {user.id} to database: {e}", exc_info=True)
+        return jsonify({"error": "Failed to save the generated plan to the database."}), 500
 
 @app.route("/api/plan/generate", methods=["POST"])
 @token_required
