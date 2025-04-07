@@ -1,4 +1,10 @@
 export const features = [
+    {    
+        emoji: "🎯",
+        title: "Personalised Learning Plan",
+        description: "Complete a self-assessment quiz to identify strengths and weaknesses, generating a tailored plan for your tutoring sessions.",
+        date: "April 2025",
+    },
     {
         emoji: "📆",
         title: "Book Sessions Online",
