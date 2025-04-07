@@ -1024,11 +1024,30 @@ def get_topics(current_user):
 @admin_required
 def add_topic(current_user):
     data = request.json
-    topic = Topic(name=data["name"], category=data.get("category"), weight=data.get("weight", 1.0))
+    topic = Topic(
+        name=data["name"],
+        category=data.get("category", "Uncategorised"), # Default category if not provided
+        weight=data.get("weight", 1.0)
+    )
     db.session.add(topic)
     db.session.commit()
-    return jsonify({"id": topic.id}), 201
+    # Return the full new topic object
+    return jsonify({"id": topic.id, "name": topic.name, "category": topic.category, "weight": topic.weight}), 201
 
+@app.route("/api/admin/topics/<int:id>", methods=["PUT"])
+@admin_required
+def edit_topic(current_user, id):
+    topic = Topic.query.get_or_404(id)
+    data = request.json
+    
+    topic.name = data.get("name", topic.name)
+    topic.category = data.get("category", topic.category)
+    # Allow updating weight too if desired
+    # topic.weight = data.get("weight", topic.weight)
+
+    db.session.commit()
+    logging.info(f"✏️ Topic {id} updated: Name='{topic.name}', Category='{topic.category}'")
+    return jsonify({"message": "Topic updated successfully"})
 
 @app.route("/api/admin/topics/<int:id>", methods=["DELETE"])
 @admin_required
@@ -1036,26 +1055,45 @@ def delete_topic(current_user, id):
     topic = Topic.query.get_or_404(id)
     logging.info(f"🗑️ Admin attempting to delete Topic ID {id} ('{topic.name}')")
 
-    # 1. Delete Weekly Plan Entries related to this topic
+    # 1. Find related Weekly Plan Entries and Subtopics
     plan_entries = WeeklyPlanEntry.query.filter_by(topic_id=topic.id).all()
-    if plan_entries:
-        entry_ids = [entry.id for entry in plan_entries]
+    entry_ids = [entry.id for entry in plan_entries]
+
+    if entry_ids:
         logging.info(f"🧹 Found related WeeklyPlanEntry IDs: {entry_ids}")
         
-        # 1a. Delete associated WeeklyPlanSubtopics first
-        num_subtopics = WeeklyPlanSubtopic.query.filter(WeeklyPlanSubtopic.entry_id.in_(entry_ids)).delete(synchronize_session=False)
-        logging.info(f"🧹 Deleted {num_subtopics} related WeeklyPlanSubtopics")
+        # 1a. Find related WeeklyPlanSubtopic IDs *before* deletion
+        subtopics_to_delete = WeeklyPlanSubtopic.query.filter(WeeklyPlanSubtopic.entry_id.in_(entry_ids)).all()
+        subtopic_ids_to_delete = [s.id for s in subtopics_to_delete]
+        logging.info(f"🧹 Found related WeeklyPlanSubtopic IDs to delete: {subtopic_ids_to_delete}")
 
-        # 1b. Delete the WeeklyPlanEntries themselves
+        if subtopic_ids_to_delete:
+             # 1b. Nullify references in Bookings *before* deleting subtopics
+             num_bookings_updated = Booking.query.filter(
+                 Booking.weekly_plan_subtopic_id.in_(subtopic_ids_to_delete)
+             ).update({Booking.weekly_plan_subtopic_id: None}, synchronize_session=False)
+             if num_bookings_updated > 0:
+                  logging.info(f"🧹 Set weekly_plan_subtopic_id to NULL for {num_bookings_updated} Booking(s).")
+             
+             # 1c. Delete associated WeeklyPlanSubtopics 
+             num_subtopics_deleted = WeeklyPlanSubtopic.query.filter(
+                 WeeklyPlanSubtopic.id.in_(subtopic_ids_to_delete)
+             ).delete(synchronize_session=False)
+             logging.info(f"🧹 Deleted {num_subtopics_deleted} related WeeklyPlanSubtopics")
+        else:
+             logging.info("🧹 No related WeeklyPlanSubtopics found for these entries.")
+
+        # 1d. Delete the WeeklyPlanEntries themselves
         num_entries = WeeklyPlanEntry.query.filter(WeeklyPlanEntry.id.in_(entry_ids)).delete(synchronize_session=False)
         logging.info(f"🧹 Deleted {num_entries} related WeeklyPlanEntries")
     else:
         logging.info("🧹 No related WeeklyPlanEntries found.")
 
-    # 2. Delete Questions related to this topic (and their dependents)
+    # 2. Find related Questions (Subtopics definitions)
     questions = TopicQuestion.query.filter_by(topic_id=topic.id).all()
-    if questions:
-        question_ids = [q.id for q in questions]
+    question_ids = [q.id for q in questions]
+
+    if question_ids:
         logging.info(f"🧹 Found related TopicQuestion IDs: {question_ids}")
         
         # 2a. Delete associated Rubrics (ConfidenceDescriptor)
@@ -1066,10 +1104,22 @@ def delete_topic(current_user, id):
         num_assessments = TopicAssessment.query.filter(TopicAssessment.question_id.in_(question_ids)).delete(synchronize_session=False)
         logging.info(f"🧹 Deleted {num_assessments} related TopicAssessments")
         
-        # 2c. Delete associated WeeklyPlanSubtopics (if any survived plan deletion - defensive check)
-        num_subtopics_q = WeeklyPlanSubtopic.query.filter(WeeklyPlanSubtopic.question_id.in_(question_ids)).delete(synchronize_session=False)
-        if num_subtopics_q > 0:
-             logging.info(f"🧹 Deleted {num_subtopics_q} WeeklyPlanSubtopics linked directly to questions (defensive cleanup)")
+        # 2c. Delete associated WeeklyPlanSubtopics (if any survived plan deletion or linked differently - defensive check)
+        # Also nullify Booking references for these defensively
+        extra_subtopics_to_delete = WeeklyPlanSubtopic.query.filter(WeeklyPlanSubtopic.question_id.in_(question_ids)).all()
+        extra_subtopic_ids_to_delete = [s.id for s in extra_subtopics_to_delete]
+        if extra_subtopic_ids_to_delete:
+             logging.info(f"🧹 Found {len(extra_subtopic_ids_to_delete)} WeeklyPlanSubtopics linked directly to questions (defensive check): {extra_subtopic_ids_to_delete}")
+             num_extra_bookings_updated = Booking.query.filter(
+                 Booking.weekly_plan_subtopic_id.in_(extra_subtopic_ids_to_delete)
+             ).update({Booking.weekly_plan_subtopic_id: None}, synchronize_session=False)
+             if num_extra_bookings_updated > 0:
+                  logging.info(f"🧹 Set weekly_plan_subtopic_id to NULL for {num_extra_bookings_updated} extra Booking(s) (defensive check)." )
+
+             num_subtopics_q_deleted = WeeklyPlanSubtopic.query.filter(
+                 WeeklyPlanSubtopic.id.in_(extra_subtopic_ids_to_delete)
+             ).delete(synchronize_session=False)
+             logging.info(f"🧹 Deleted {num_subtopics_q_deleted} WeeklyPlanSubtopics linked directly to questions (defensive cleanup)")
 
         # 2d. Delete the Questions themselves
         num_questions = TopicQuestion.query.filter(TopicQuestion.id.in_(question_ids)).delete(synchronize_session=False)

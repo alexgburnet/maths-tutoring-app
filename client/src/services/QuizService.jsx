@@ -12,6 +12,11 @@ const QuizService = {
     return response.data;
   },
 
+  updateTopic: async (topicId, data) => {
+    const response = await axios.put(`/admin/topics/${topicId}`, data);
+    return response.data;
+  },
+
   deleteTopic: async (topicId) => {
     const response = await axios.delete(`/admin/topics/${topicId}`);
     return response.data;

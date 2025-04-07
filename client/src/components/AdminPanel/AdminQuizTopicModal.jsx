@@ -7,12 +7,15 @@ export default function AdminQuizTopicModal({ topicId, onClose }) {
     const [questions, setQuestions] = useState([]);
     const [openRubricId, setOpenRubricId] = useState(null);
     const [rubrics, setRubrics] = useState({});
-    const [newQuestionTier, setNewQuestionTier] = useState('Foundation'); // Default tier
+    const [newQuestionTier, setNewQuestionTier] = useState('Foundation');
+    const [topicCategory, setTopicCategory] = useState('');
+    const [isSavingCategory, setIsSavingCategory] = useState(false);
 
     const load = async () => {
         const allTopics = await QuizService.getTopics();
         const currentTopic = allTopics.find(t => t.id === parseInt(topicId));
         setTopic(currentTopic);
+        setTopicCategory(currentTopic?.category || 'Uncategorised');
         const subtopics = await QuizService.getQuestions(topicId);
         setQuestions(subtopics);
     };
@@ -35,10 +38,10 @@ export default function AdminQuizTopicModal({ topicId, onClose }) {
 
     const saveRubric = async (questionId, score) => {
         const entry = rubrics[questionId]?.[score];
-        if (!entry.description) return;
+        if (!entry?.description?.trim()) return;
 
         if (entry.id) {
-            await QuizService.updateRubric(entry.id, entry);
+            await QuizService.updateRubric(entry.id, { description: entry.description });
         } else {
             await QuizService.createRubric({ question_id: questionId, score, description: entry.description });
         }
@@ -55,8 +58,10 @@ export default function AdminQuizTopicModal({ topicId, onClose }) {
 
     const deleteQuestion = async (e, id) => {
         e.stopPropagation();
-        await QuizService.deleteQuestion(id);
-        await load();
+        if (window.confirm('Are you sure you want to delete this question and its rubrics?')) {
+            await QuizService.deleteQuestion(id);
+            await load();
+        }
     };
 
     const updateWeight = (questionId, newWeight) => {
@@ -69,7 +74,29 @@ export default function AdminQuizTopicModal({ topicId, onClose }) {
 
     const saveWeight = async (questionId) => {
         const question = questions.find(q => q.id === questionId);
-        await QuizService.updateQuestion(questionId, { weight: parseFloat(question.weight) });
+        if (question && !isNaN(parseFloat(question.weight))) {
+            await QuizService.updateQuestion(questionId, { weight: parseFloat(question.weight) });
+        } else {
+            alert('Invalid weight value.');
+        }
+    };
+
+    const handleSaveCategory = async () => {
+        if (!topicCategory.trim()) {
+            alert('Please enter a category name.');
+            return;
+        }
+        setIsSavingCategory(true);
+        try {
+            await QuizService.updateTopic(topicId, { category: topicCategory.trim() });
+            setTopic(prev => ({ ...prev, category: topicCategory.trim() }));
+            alert('Category updated!');
+        } catch (error) {
+            console.error("Failed to save category:", error);
+            alert('Failed to save category.');
+        } finally {
+            setIsSavingCategory(false);
+        }
     };
 
     useEffect(() => {
@@ -77,13 +104,34 @@ export default function AdminQuizTopicModal({ topicId, onClose }) {
     }, [topicId]);
 
     return (
-        <div className="quiz-modal-overlay">
-            <div className="quiz-modal">
+        <div className="quiz-modal-overlay" onClick={onClose}>
+            <div className="quiz-modal" onClick={e => e.stopPropagation()}>
                 <div className="quiz-modal-header">
-                    <h2>{topic?.name} – Subtopics</h2>
+                    <h2>{topic?.name} – Details</h2>
                     <button className="close-button" onClick={onClose}>×</button>
                 </div>
 
+                <div className="topic-category-editor">
+                    <label htmlFor="topic-category-input">Category:</label>
+                    <input
+                        id="topic-category-input"
+                        type="text"
+                        value={topicCategory}
+                        onChange={(e) => setTopicCategory(e.target.value)}
+                        placeholder="e.g., Algebra, Geometry"
+                    />
+                    <button
+                        onClick={handleSaveCategory}
+                        disabled={isSavingCategory || topicCategory === (topic?.category || 'Uncategorised')}
+                        className="save-button"
+                    >
+                        {isSavingCategory ? 'Saving...' : 'Save Category'}
+                    </button>
+                </div>
+
+                <hr className="modal-divider" />
+
+                <h3>Subtopics / Questions</h3>
                 <div className="add-question-controls">
                     <select
                         value={newQuestionTier}
@@ -109,10 +157,10 @@ export default function AdminQuizTopicModal({ topicId, onClose }) {
                             }}>
                                 <div className="question-title">
                                     {q.title} - 
-                                    <span className="tier-badge">{q.tier}</span>
+                                    <span className={`tier-badge tier-${q.tier}`}>{q.tier === 'F' ? 'Foundation' : 'Higher'}</span>
                                 </div>
                                 <div className="question-actions">
-                                    <button onClick={(e) => deleteQuestion(e, q.id)}>Delete</button>
+                                    <button onClick={(e) => deleteQuestion(e, q.id)} className="delete-button small-button">Delete</button>
                                 </div>
                             </div>
 
@@ -124,10 +172,10 @@ export default function AdminQuizTopicModal({ topicId, onClose }) {
                                         id={`weight-${q.id}`}
                                         step="0.1"
                                         min="0"
-                                        value={q.weight || ''}
+                                        value={q.weight === null || q.weight === undefined ? '' : q.weight}
                                         onChange={(e) => updateWeight(q.id, e.target.value)}
                                     />
-                                    <button onClick={() => saveWeight(q.id)}>Save Weight</button>
+                                    <button onClick={() => saveWeight(q.id)} className="save-button small-button">Save Wgt</button>
                                 </div>
                             )}
 
@@ -142,7 +190,7 @@ export default function AdminQuizTopicModal({ topicId, onClose }) {
                                                 onChange={(e) => handleRubricChange(q.id, score, e.target.value)}
                                                 placeholder={`Enter rubric for score ${score}`}
                                             />
-                                            <button onClick={() => saveRubric(q.id, score)} className="save-button">
+                                            <button onClick={() => saveRubric(q.id, score)} className="save-button small-button">
                                                 Save
                                             </button>
                                         </div>
