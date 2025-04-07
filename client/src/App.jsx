@@ -11,6 +11,7 @@ import MakeBooking from "./components/MakeBooking/MakeBooking";
 import Notes from "./components/Notes/Notes";
 import Worksheets from "./components/Worksheets/Worksheets";
 import ChangePassword from "./components/ChangePassword/ChangePassword";
+import TakeQuiz from "./components/TakeQuiz/TakeQuiz";
 
 import MainLayout from "./components/MainLayout/MainLayout";
 
@@ -42,6 +43,7 @@ function App() {
             <Route path="/worksheets" element={<Worksheets />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/change-password" element={<ChangePassword />} />
+            <Route path="/quiz" element={<TakeQuiz />} />
             {/* You can keep adding more protected routes here */}
           </Route>
 

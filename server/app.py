@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, send_from_directory, send_file, make_response
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import desc
+from sqlalchemy.orm import joinedload
 from flask_cors import CORS
 from dotenv import load_dotenv
 import os
@@ -14,9 +15,10 @@ from monzo import MonzoClient
 from zoom import create_zoom_meeting, delete_zoom_meeting
 from werkzeug.utils import secure_filename
 from functools import wraps
+from datetime import date
 
 from mathpix_helper import extract_latex_from_pdf
-from openai_helper import generate_followup_questions_latex
+from openai_helper import generate_followup_questions_latex, generate_weekly_plan_openai
 from pdflatex_helper import render_latex_to_pdf
 from sqlalchemy import and_
 import logging
@@ -78,7 +80,6 @@ def update_paid_status_for_bookings():
     
     db.session.commit()
 
-
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100))
@@ -86,13 +87,16 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
+    target_grade = db.Column(db.Integer)
+    maths_paper = db.Column(db.String(1))
+    exam_date = db.Column(db.Date)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
-    
+
 class Booking(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     student_name = db.Column(db.String(100), nullable=False)
@@ -150,14 +154,6 @@ class Topic(db.Model):
     category = db.Column(db.String(100))  # e.g., Algebra, Geometry
     weight = db.Column(db.Float, default=1.0)  # Importance for grade calculation
 
-class ConfidenceDescriptor(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    topic_id = db.Column(db.Integer, db.ForeignKey("topic.id"), nullable=False)
-    score = db.Column(db.Integer, nullable=False)  # e.g., 0 to 5
-    description = db.Column(db.String(255), nullable=False)
-
-    topic = db.relationship("Topic", backref="descriptors")
-
 class SelfAssessment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
@@ -168,10 +164,10 @@ class SelfAssessment(db.Model):
 class TopicAssessment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     assessment_id = db.Column(db.Integer, db.ForeignKey("self_assessment.id"), nullable=False)
-    topic_id = db.Column(db.Integer, db.ForeignKey("topic.id"), nullable=False)
-    confidence_score = db.Column(db.Integer, nullable=False)  # 0–5
+    question_id = db.Column(db.Integer, db.ForeignKey("topic_question.id"), nullable=False)
+    confidence_score = db.Column(db.Integer, nullable=False)
 
-    topic = db.relationship("Topic")
+    question = db.relationship("TopicQuestion")
     assessment = db.relationship("SelfAssessment", backref="topic_assessments")
 
 class WeeklyPlan(db.Model):
@@ -193,6 +189,31 @@ class WeeklyPlanEntry(db.Model):
 
     plan = db.relationship("WeeklyPlan", backref="entries")
     topic = db.relationship("Topic")
+
+class WeeklyPlanSubtopic(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    entry_id = db.Column(db.Integer, db.ForeignKey("weekly_plan_entry.id"), nullable=False)
+    question_id = db.Column(db.Integer, db.ForeignKey("topic_question.id"), nullable=False)
+
+    entry = db.relationship("WeeklyPlanEntry", backref="subtopics")
+    question = db.relationship("TopicQuestion")
+
+class TopicQuestion(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    topic_id = db.Column(db.Integer, db.ForeignKey("topic.id"), nullable=False)
+    title = db.Column(db.String(100), nullable=False)  # e.g. "Simultaneous Equations"
+    tier = db.Column(db.String(20), nullable=False)  # "Foundation" or "Higher"
+    weight = db.Column(db.Float, default=1.0)  # importance for topic-level confidence
+
+    topic = db.relationship("Topic", backref="questions")
+    descriptors = db.relationship("ConfidenceDescriptor", backref="question", lazy=True)
+
+class ConfidenceDescriptor(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    question_id = db.Column(db.Integer, db.ForeignKey("topic_question.id"), nullable=False)
+    score = db.Column(db.Integer, nullable=False)  # 0–5
+    description = db.Column(db.String(255), nullable=False)
+
 
 # Auth Decorator
 def token_required(f):
@@ -232,6 +253,38 @@ with app.app_context():
     print("Creating database tables (if not exists)...")
     db.create_all()
 
+def compute_topic_confidences(assessment_id):
+    assessment = SelfAssessment.query.options(
+        joinedload(SelfAssessment.topic_assessments)
+        .joinedload(TopicAssessment.question)
+        .joinedload(TopicQuestion.topic)
+    ).get(assessment_id)
+
+    topic_confidence = {}
+
+    for ta in assessment.topic_assessments:
+        topic = ta.question.topic
+        weight = ta.question.weight
+        score = ta.confidence_score
+
+        if topic.id not in topic_confidence:
+            topic_confidence[topic.id] = {
+                "topic_name": topic.name,
+                "weighted_sum": 0.0,
+                "total_weight": 0.0
+            }
+
+        topic_confidence[topic.id]["weighted_sum"] += score * weight
+        topic_confidence[topic.id]["total_weight"] += weight
+
+    # Compute average
+    results = {}
+    for topic_id, data in topic_confidence.items():
+        average = data["weighted_sum"] / data["total_weight"]
+        results[data["topic_name"]] = round(average, 2)
+
+    return results
+
 # Routes
 
 @app.route("/api/register", methods=["POST"])
@@ -255,6 +308,7 @@ def register():
         "name": user.name,
         "surname": user.surname,
         "email": user.email,
+        "maths_paper": user.maths_paper,
         "exp": datetime.utcnow() + timedelta(hours=2)
     }
 
@@ -381,6 +435,7 @@ def refresh():
             "name": user.name,
             "surname": user.surname,
             "email": user.email,
+            "maths_paper": user.maths_paper,
             "exp": datetime.utcnow() + timedelta(minutes=15),
         }, SECRET_KEY, algorithm="HS256")
 
@@ -404,6 +459,19 @@ def logout():
     )
 
     return response
+
+@app.route("/api/admin/users/<int:user_id>", methods=["PUT"])
+@admin_required
+def update_user_info(current_user, user_id):
+    user = User.query.get_or_404(user_id)
+    data = request.json
+
+    user.target_grade = data.get("target_grade")
+    user.exam_date = datetime.strptime(data.get("exam_date"), "%Y-%m-%d") if data.get("exam_date") else None
+    user.maths_paper = data.get("maths_paper")
+
+    db.session.commit()
+    return jsonify({"message": "User updated"})
 
 @app.route("/api/bookings", methods=["POST"])
 @token_required
@@ -828,6 +896,666 @@ def regenerate_followup(current_user, booking_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     
+@app.route("/api/admin/topics", methods=["GET"])
+@admin_required
+def get_topics(current_user):
+    topics = Topic.query.all()
+    return jsonify([{"id": t.id, "name": t.name, "category": t.category, "weight": t.weight} for t in topics])
+
+
+@app.route("/api/admin/topics", methods=["POST"])
+@admin_required
+def add_topic(current_user):
+    data = request.json
+    topic = Topic(name=data["name"], category=data.get("category"), weight=data.get("weight", 1.0))
+    db.session.add(topic)
+    db.session.commit()
+    return jsonify({"id": topic.id}), 201
+
+
+@app.route("/api/admin/topics/<int:id>", methods=["DELETE"])
+@admin_required
+def delete_topic(current_user, id):
+    topic = Topic.query.get_or_404(id)
+    logging.info(f"🗑️ Admin attempting to delete Topic ID {id} ('{topic.name}')")
+
+    # 1. Delete Weekly Plan Entries related to this topic
+    plan_entries = WeeklyPlanEntry.query.filter_by(topic_id=topic.id).all()
+    if plan_entries:
+        entry_ids = [entry.id for entry in plan_entries]
+        logging.info(f"🧹 Found related WeeklyPlanEntry IDs: {entry_ids}")
+        
+        # 1a. Delete associated WeeklyPlanSubtopics first
+        num_subtopics = WeeklyPlanSubtopic.query.filter(WeeklyPlanSubtopic.entry_id.in_(entry_ids)).delete(synchronize_session=False)
+        logging.info(f"🧹 Deleted {num_subtopics} related WeeklyPlanSubtopics")
+
+        # 1b. Delete the WeeklyPlanEntries themselves
+        num_entries = WeeklyPlanEntry.query.filter(WeeklyPlanEntry.id.in_(entry_ids)).delete(synchronize_session=False)
+        logging.info(f"🧹 Deleted {num_entries} related WeeklyPlanEntries")
+    else:
+        logging.info("🧹 No related WeeklyPlanEntries found.")
+
+    # 2. Delete Questions related to this topic (and their dependents)
+    questions = TopicQuestion.query.filter_by(topic_id=topic.id).all()
+    if questions:
+        question_ids = [q.id for q in questions]
+        logging.info(f"🧹 Found related TopicQuestion IDs: {question_ids}")
+        
+        # 2a. Delete associated Rubrics (ConfidenceDescriptor)
+        num_rubrics = ConfidenceDescriptor.query.filter(ConfidenceDescriptor.question_id.in_(question_ids)).delete(synchronize_session=False)
+        logging.info(f"🧹 Deleted {num_rubrics} related ConfidenceDescriptors (Rubrics)")
+
+        # 2b. Delete associated Assessments (TopicAssessment)
+        num_assessments = TopicAssessment.query.filter(TopicAssessment.question_id.in_(question_ids)).delete(synchronize_session=False)
+        logging.info(f"🧹 Deleted {num_assessments} related TopicAssessments")
+        
+        # 2c. Delete associated WeeklyPlanSubtopics (if any survived plan deletion - defensive check)
+        num_subtopics_q = WeeklyPlanSubtopic.query.filter(WeeklyPlanSubtopic.question_id.in_(question_ids)).delete(synchronize_session=False)
+        if num_subtopics_q > 0:
+             logging.info(f"🧹 Deleted {num_subtopics_q} WeeklyPlanSubtopics linked directly to questions (defensive cleanup)")
+
+        # 2d. Delete the Questions themselves
+        num_questions = TopicQuestion.query.filter(TopicQuestion.id.in_(question_ids)).delete(synchronize_session=False)
+        logging.info(f"🧹 Deleted {num_questions} related TopicQuestions")
+    else:
+         logging.info("🧹 No related TopicQuestions found.")
+
+    # 3. Delete the Topic itself
+    db.session.delete(topic)
+    logging.info(f"🧹 Deleting Topic ID {id}")
+    
+    db.session.commit()
+    logging.info(f"✅ Topic deletion complete for ID {id}")
+    return jsonify({"message": "Topic and all related data deleted successfully"})
+
+@app.route("/api/admin/questions", methods=["POST"])
+@admin_required
+def add_question(current_user):
+    data = request.json
+    question = TopicQuestion(
+        topic_id=data["topic_id"],
+        title=data["title"],
+        tier=data["tier"],
+        weight=data.get("weight", 1.0)
+    )
+    db.session.add(question)
+    db.session.commit()
+    return jsonify({"id": question.id}), 201
+
+
+@app.route("/api/admin/questions/<int:id>", methods=["PUT"])
+@admin_required
+def edit_question(current_user, id):
+    question = TopicQuestion.query.get_or_404(id)
+    data = request.json
+    question.title = data.get("title", question.title)
+    question.tier = data.get("tier", question.tier)
+    question.weight = data.get("weight", question.weight)
+    db.session.commit()
+    return jsonify({"message": "Question updated"})
+
+
+@app.route("/api/admin/questions/<int:id>", methods=["DELETE"])
+@admin_required
+def delete_question(current_user, id):
+    question = TopicQuestion.query.get_or_404(id)
+
+    # Delete associated rubrics
+    ConfidenceDescriptor.query.filter_by(question_id=question.id).delete()
+
+    # Delete any topic assessments linked to this question
+    TopicAssessment.query.filter_by(question_id=question.id).delete()
+
+    # ✅ Delete subtopics that reference this question
+    WeeklyPlanSubtopic.query.filter_by(question_id=question.id).delete()
+
+    db.session.delete(question)
+    db.session.commit()
+    return jsonify({"message": "Question, rubrics, assessments, and plan subtopics deleted"})
+
+
+@app.route("/api/admin/questions", methods=["GET"])
+@admin_required
+def get_questions(current_user):
+    topic_id = request.args.get("topic_id")
+    tier_param = request.args.get("tier")  # Accepts "F" or "H"
+    
+    query = TopicQuestion.query
+
+    if topic_id:
+        query = query.filter_by(topic_id=topic_id)
+
+    if tier_param:
+        if tier_param == "F":
+            query = query.filter(TopicQuestion.tier == "Foundation")
+        elif tier_param == "H":
+            query = query.filter(TopicQuestion.tier == "Higher")
+
+    questions = query.all()
+    return jsonify([
+        {
+            "id": q.id,
+            "title": q.title,
+            "tier": q.tier,
+            "weight": q.weight,
+            "topic_id": q.topic_id
+        } for q in questions
+    ])
+
+@app.route("/api/admin/questions/<int:question_id>/rubrics", methods=["GET"])
+@admin_required
+def get_rubrics(current_user, question_id):
+    rubrics = ConfidenceDescriptor.query.filter_by(question_id=question_id).all()
+    return jsonify([
+        {"id": r.id, "score": r.score, "description": r.description}
+        for r in rubrics
+    ])
+
+
+@app.route("/api/admin/rubrics", methods=["POST"])
+@admin_required
+def add_rubric(current_user):
+    data = request.json
+    rubric = ConfidenceDescriptor(
+        question_id=data["question_id"],
+        score=data["score"],
+        description=data["description"]
+    )
+    db.session.add(rubric)
+    db.session.commit()
+    return jsonify({"id": rubric.id}), 201
+
+
+@app.route("/api/admin/rubrics/<int:id>", methods=["PUT"])
+@admin_required
+def edit_rubric(current_user, id):
+    rubric = ConfidenceDescriptor.query.get_or_404(id)
+    data = request.json
+    rubric.score = data.get("score", rubric.score)
+    rubric.description = data.get("description", rubric.description)
+    db.session.commit()
+    return jsonify({"message": "Rubric updated"})
+
+
+@app.route("/api/admin/rubrics/<int:id>", methods=["DELETE"])
+@admin_required
+def delete_rubric(current_user, id):
+    rubric = ConfidenceDescriptor.query.get_or_404(id)
+    db.session.delete(rubric)
+    db.session.commit()
+    return jsonify({"message": "Rubric deleted"})
+
+@app.route("/api/quiz/submit", methods=["POST"])
+@token_required
+def submit_quiz(current_user):
+    data = request.json  # [{question_id, confidence_score}]
+
+    assessment = SelfAssessment(user_id=current_user.id)
+    db.session.add(assessment)
+    db.session.flush()  # Get assessment.id before commit
+
+    for entry in data:
+        question_id = entry["question_id"]
+        confidence_score = entry["confidence_score"]
+
+        question = TopicQuestion.query.get_or_404(question_id)
+        topic_assessment = TopicAssessment(
+            assessment_id=assessment.id,
+            question_id=question.id,
+            confidence_score=confidence_score
+        )
+        db.session.add(topic_assessment)
+
+    db.session.commit()
+    return jsonify({"message": "Assessment submitted"})
+
+@app.route("/api/quiz/topics", methods=["GET"])
+@token_required
+def quiz_get_topics(current_user):
+    use_user_paper = request.args.get("use_user_paper", "false").lower() == "true"
+
+    if not use_user_paper or not current_user.maths_paper:
+        # Default behavior or error if paper isn't set/requested
+        topics = Topic.query.all()
+        logging.warning("Quiz topics: Not using user paper or paper not set. Returning all topics.")
+    else:
+        user_paper = current_user.maths_paper
+        logging.info(f"Quiz topics: Fetching for user paper '{user_paper}'")
+        
+        if user_paper == 'F':
+            # Foundation users only get topics with at least one 'F' question
+            query = Topic.query.join(Topic.questions).filter(TopicQuestion.tier == 'F').distinct()
+            logging.info("  -> Filtering for topics containing Foundation questions only.")
+        else: # user_paper == 'H'
+            # Higher users get topics with at least one 'F' OR 'H' question (effectively all topics with any questions)
+            query = Topic.query.join(Topic.questions).distinct()
+            logging.info("  -> Including topics containing Foundation OR Higher questions.")
+            
+        topics = query.all()
+
+    logging.info(f"📦 Returning {len(topics)} topics for quiz")
+    return jsonify([
+        {"id": t.id, "name": t.name, "category": t.category}
+        for t in topics
+    ])
+
+@app.route("/api/quiz/questions", methods=["GET"])
+@token_required
+def quiz_get_questions(current_user):
+    topic_id = request.args.get("topic_id")
+    if not topic_id:
+        return jsonify({"error": "Missing topic_id"}), 400
+
+    use_user_paper = request.args.get("use_user_paper", "false").lower() == "true"
+    logging.info(f"Quiz questions: Fetching for topic {topic_id}, use_user_paper={use_user_paper}")
+
+    query = TopicQuestion.query.filter_by(topic_id=topic_id)
+
+    if use_user_paper and current_user.maths_paper:
+        user_paper = current_user.maths_paper
+        logging.info(f"  -> Filtering based on user paper: {user_paper}")
+        if user_paper == 'F':
+            # Foundation users get only Foundation questions
+            query = query.filter(TopicQuestion.tier == 'F')
+            logging.info("    -> Applying filter: tier == 'F'")
+        else: # user_paper == 'H'
+            # Higher users get Foundation AND Higher questions
+            query = query.filter(TopicQuestion.tier.in_(['F', 'H']))
+            logging.info("    -> Applying filter: tier IN ('F', 'H')")
+    else:
+        logging.warning("  -> Not filtering by tier (no user paper or not requested).")
+        # Optionally return no questions or all questions if paper isn't specified?
+        # Current behaviour returns all questions for the topic.
+
+    questions = query.all()
+    logging.info(f"  -> Returning {len(questions)} questions for topic {topic_id}")
+    return jsonify([
+        {
+            "id": q.id,
+            "title": q.title,
+            "tier": q.tier,
+            "weight": q.weight
+        } for q in questions
+    ])
+
+@app.route("/api/quiz/questions/<int:question_id>/rubrics", methods=["GET"])
+@token_required
+def quiz_get_rubrics(current_user, question_id):
+    rubrics = ConfidenceDescriptor.query.filter_by(question_id=question_id).all()
+    return jsonify([
+        {"score": r.score, "description": r.description}
+        for r in rubrics
+    ])
+
+def calculate_topic_priorities(user_id):
+    from collections import defaultdict
+
+    user = User.query.get_or_404(user_id)
+    logging.info(f"🧠 Calculating priorities for user {user_id} (Paper: {user.maths_paper})")
+    if not user.maths_paper:
+        logging.warning(f"⚠️ User {user_id} has no maths paper set. Cannot calculate priorities.")
+        return []
+
+    # Determine which tiers to include based on user's paper
+    include_foundation = True # Higher includes Foundation
+    include_higher = (user.maths_paper == 'H')
+    logging.info(f"🏷️ Including tiers: Foundation={include_foundation}, Higher={include_higher}")
+
+    assessments = TopicAssessment.query.join(SelfAssessment).filter(
+        SelfAssessment.user_id == user_id
+    ).all()
+    logging.info(f"📊 Found {len(assessments)} total assessment entries for user {user_id}")
+
+    topic_data = defaultdict(lambda: {
+        "weighted_sum": 0.0,
+        "total_weight": 0.0,
+        "subtopics": [],
+        "topic_name": "",
+        "category": "",
+        "topic_weight": 1.0
+    })
+
+    for ta in assessments:
+        question = ta.question
+        topic = question.topic
+        logging.debug(f"  - Considering Question ID {question.id} ('{question.title}', Tier: {question.tier}) for Topic ID {topic.id} ('{topic.name}')")
+
+        # ⛔ Skip if question tier is not included based on user's paper
+        is_foundation = (question.tier == 'F')
+        is_higher = (question.tier == 'H')
+
+        if not ((is_foundation and include_foundation) or (is_higher and include_higher)):
+            logging.debug(f"    -> Skipping Question ID {question.id} - Tier {question.tier} not included for paper {user.maths_paper}")
+            continue
+        logging.debug(f"    -> Including Question ID {question.id} - Tier match for paper {user.maths_paper}")
+
+        confidence = ta.confidence_score
+        weight = question.weight
+
+        topic_data[topic.id]["topic_name"] = topic.name
+        topic_data[topic.id]["category"] = topic.category
+        topic_data[topic.id]["weighted_sum"] += confidence * weight
+        topic_data[topic.id]["total_weight"] += weight
+        topic_data[topic.id]["topic_weight"] = topic.weight or 1.0
+
+        topic_data[topic.id]["subtopics"].append({
+            "question_id": question.id,
+            "title": question.title,
+            "confidence": confidence,
+            "weight": weight
+        })
+
+    topic_priorities = []
+    logging.info(f"⚙️ Processing {len(topic_data)} topics after initial assessment aggregation")
+
+    for topic_id, data in topic_data.items():
+        if not data["subtopics"]:
+            logging.info(f"  -> Skipping Topic ID {topic_id} ('{data['topic_name']}') - No relevant subtopics after tier filtering")
+            continue
+
+        # Log the raw subtopics list for this topic before sorting
+        if topic_id == 8: # Specific log for Topic 8
+            logging.debug(f"    Raw subtopics for Topic 8 before sort: {data['subtopics']}")
+
+        avg_score = data["weighted_sum"] / data["total_weight"] if data["total_weight"] else 0
+        priority = (1 - avg_score / 5) * data["topic_weight"]
+        logging.info(f"  -> Topic ID {topic_id} ('{data['topic_name']}'): Avg Score={avg_score:.2f}, Weight={data['topic_weight']:.2f}, Priority={priority:.4f}")
+
+        # Sort subtopics by lowest confidence, then highest weight
+        sorted_subtopics = sorted(data["subtopics"], key=lambda x: (x["confidence"], -x["weight"]))
+        
+        # Log the sorted subtopics list
+        if topic_id == 8: # Specific log for Topic 8
+             logging.debug(f"    Sorted subtopics for Topic 8 after sort: {sorted_subtopics}")
+
+        focus_area = sorted_subtopics[0]["title"] if sorted_subtopics else None
+        # logging.debug(f"    Sorted subtopics for Topic {topic_id}: {[(s['question_id'], s['confidence']) for s in sorted_subtopics]}") # Keep original debug log too
+
+        topic_priorities.append({
+            "topic_id": topic_id,
+            "topic_name": data["topic_name"],
+            "category": data["category"],
+            "avg_score": round(avg_score, 2),
+            "weight": data["topic_weight"],
+            "priority": round(priority, 4),
+            "focus_area": focus_area,
+            "subtopics": sorted_subtopics
+        })
+
+    topic_priorities.sort(key=lambda x: x["priority"], reverse=True)
+    logging.info(f"🏆 Final calculated priorities ({len(topic_priorities)} topics): {[(p['topic_id'], p['priority']) for p in topic_priorities]}")
+    return topic_priorities
+
+def generate_plan_for_user(user):
+    if not user.exam_date or not user.target_grade:
+        return jsonify({"error": "User must have an exam date and target grade set"}), 400
+
+    from datetime import date
+
+    # Delete all existing plans and related records for this user
+    existing_plans = WeeklyPlan.query.filter_by(user_id=user.id).all()
+    if existing_plans:
+        plan_ids = [plan.id for plan in existing_plans]
+        entry_ids = [entry.id for entry in WeeklyPlanEntry.query.filter(WeeklyPlanEntry.plan_id.in_(plan_ids)).all()]
+        if entry_ids:
+            WeeklyPlanSubtopic.query.filter(WeeklyPlanSubtopic.entry_id.in_(entry_ids)).delete(synchronize_session=False)
+        WeeklyPlanEntry.query.filter(WeeklyPlanEntry.plan_id.in_(plan_ids)).delete(synchronize_session=False)
+        WeeklyPlan.query.filter(WeeklyPlan.id.in_(plan_ids)).delete(synchronize_session=False)
+        db.session.commit()
+        logging.info(f"🧹 Cleared existing plan for user {user.id}")
+
+    today = date.today()
+    # Ensure exam_date is date object if it's datetime
+    exam_date_obj = user.exam_date
+    if isinstance(exam_date_obj, datetime):
+        exam_date_obj = exam_date_obj.date()
+        
+    days_left = (exam_date_obj - today).days
+    weeks_left = max(days_left // 7, 1)  # Ensure at least 1 week
+    logging.info(f"📅 Generating plan for user {user.id} ({user.email}) over {weeks_left} weeks until {exam_date_obj}")
+
+    # 1. Calculate and sort topic priorities
+    priorities = calculate_topic_priorities(user.id)
+    if not priorities:
+        logging.warning(f"⚠️ No priorities calculated for user {user.id}. Cannot generate plan.")
+        return jsonify({"error": "No assessment data found for user or priorities could not be calculated"}), 400
+
+    # Prepare user_info dict for OpenAI helper
+    user_info = {
+        "target_grade": user.target_grade,
+        "exam_date": user.exam_date, # Pass the original datetime or date object
+    }
+
+    # 2. Call OpenAI to generate the plan structure
+    logging.info(f"🧠 Requesting plan generation from OpenAI for user {user.id}...")
+    openai_plan_data = generate_weekly_plan_openai(user_info, priorities, weeks_left)
+
+    if not openai_plan_data or "weekly_plan" not in openai_plan_data:
+        logging.error(f"❌ Failed to generate plan using OpenAI for user {user.id}. OpenAI helper returned invalid data.")
+        # Optional: Fallback to linear assignment? Or just return error.
+        # For now, return error:
+        return jsonify({"error": "Failed to generate plan structure via AI assistant."}), 500
+
+    ai_generated_plan = openai_plan_data["weekly_plan"] # This is the dict { "1": [...], "2": [...] }
+    logging.info(f"✅ OpenAI returned plan structure for user {user.id}. Proceeding to save.")
+
+    # 3. Create the new WeeklyPlan DB entry
+    plan = WeeklyPlan(
+        user_id=user.id,
+        exam_date=user.exam_date, # Use the original date/datetime
+        target_grade=str(user.target_grade),
+        generated_at=datetime.utcnow()
+    )
+    db.session.add(plan)
+    db.session.flush()  # Get plan.id before creating entries
+    logging.info(f"Created WeeklyPlan DB record (ID: {plan.id}) for user {user.id}")
+
+    # 4. Process the AI-generated plan and save DB entries
+    all_topic_ids = {t.id for t in Topic.query.all()} # Get valid topic IDs once
+    all_question_ids = {q.id for q in TopicQuestion.query.all()} # Get valid question IDs once
+    
+    for week_str, weekly_topics in ai_generated_plan.items():
+        try:
+            week_num = int(week_str)
+            if not isinstance(weekly_topics, list):
+                logging.warning(f"⚠️ Skipping week '{week_str}' for user {user.id}: invalid format (expected list).")
+                continue
+            
+            logging.info(f"  Processing Week {week_num} for plan {plan.id}")
+
+            for topic_info in weekly_topics:
+                if not isinstance(topic_info, dict) or "topic_id" not in topic_info or "subtopic_ids" not in topic_info:
+                    logging.warning(f"    ⚠️ Skipping invalid topic entry in week {week_num}: {topic_info}")
+                    continue
+
+                topic_id = topic_info["topic_id"]
+                focus_area = topic_info.get("focus_area") # Optional
+                subtopic_ids = topic_info["subtopic_ids"]
+
+                # Validate topic_id
+                if topic_id not in all_topic_ids:
+                    logging.warning(f"    ⚠️ Skipping topic ID {topic_id} in week {week_num}: Topic not found in database.")
+                    continue
+
+                # Validate subtopic_ids format
+                if not isinstance(subtopic_ids, list):
+                     logging.warning(f"    ⚠️ Skipping topic ID {topic_id} in week {week_num}: subtopic_ids is not a list ({subtopic_ids}).")
+                     continue
+                
+                valid_subtopic_ids = [sid for sid in subtopic_ids if isinstance(sid, int) and sid in all_question_ids]
+                if len(valid_subtopic_ids) != len(subtopic_ids):
+                     logging.warning(f"    ⚠️ Filtered invalid/unknown subtopic IDs for topic {topic_id} in week {week_num}. Original: {subtopic_ids}, Valid: {valid_subtopic_ids}")
+
+                if not valid_subtopic_ids: # Don't create entry if no valid subtopics provided by AI
+                    logging.warning(f"    ⚠️ No valid subtopics provided by AI for topic {topic_id} in week {week_num}. Skipping entry creation.")
+                    continue
+
+                # Create WeeklyPlanEntry
+                entry = WeeklyPlanEntry(
+                    plan_id=plan.id,
+                    week_number=week_num,
+                    topic_id=topic_id,
+                    focus_area=focus_area
+                )
+                db.session.add(entry)
+                db.session.flush()  # Get entry.id
+                logging.info(f"    -> Created WeeklyPlanEntry (ID: {entry.id}) for Topic {topic_id} in Week {week_num}")
+
+                # Create WeeklyPlanSubtopic entries - ENSURE UNIQUENESS
+                added_subtopic_count = 0
+                # Convert to set to remove duplicates before creating DB entries
+                unique_valid_subtopic_ids = set(valid_subtopic_ids)
+                
+                for sub_id in unique_valid_subtopic_ids:
+                    subtopic_entry = WeeklyPlanSubtopic(
+                        entry_id=entry.id,
+                        question_id=sub_id
+                    )
+                    db.session.add(subtopic_entry)
+                    added_subtopic_count += 1
+                
+                if added_subtopic_count > 0:
+                    logging.info(f"      -> Added {added_subtopic_count} UNIQUE WeeklyPlanSubtopic records for Entry {entry.id} (IDs: {unique_valid_subtopic_ids})")
+                
+        except ValueError:
+            logging.warning(f"⚠️ Skipping invalid week number '{week_str}' in OpenAI response for user {user.id}.")
+        except Exception as e:
+            logging.error(f"❌ Unexpected error processing week '{week_str}' for user {user.id}: {e}", exc_info=True)
+            # Optionally rollback this week's additions or the whole plan?
+            # For now, log and continue to next week if possible.
+
+    # 5. Commit all changes
+    try:
+        db.session.commit()
+        logging.info(f"✅ Successfully generated and saved AI-powered weekly plan for user {user.id} (Plan ID: {plan.id})")
+        return jsonify({"message": "Weekly plan generated successfully using AI assistant.", "plan_id": plan.id})
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"❌ Failed to commit AI-generated plan for user {user.id} to database: {e}", exc_info=True)
+        return jsonify({"error": "Failed to save the generated plan to the database."}), 500
+
+@app.route("/api/plan/generate", methods=["POST"])
+@token_required
+def generate_plan(current_user):
+    return generate_plan_for_user(current_user)
+
+@app.route("/api/admin/plan/generate/<int:user_id>", methods=["POST"])
+@admin_required
+def admin_generate_plan(current_user, user_id):
+    user = User.query.get_or_404(user_id)
+    return generate_plan_for_user(user)
+
+def view_plan_for_user(user):
+    plan = WeeklyPlan.query.filter_by(user_id=user.id).order_by(WeeklyPlan.generated_at.desc()).first()
+
+    if not plan:
+        return jsonify({"message": "No plan found"}), 404
+
+    entries = (
+        WeeklyPlanEntry.query
+        .filter_by(plan_id=plan.id)
+        .options(
+            joinedload(WeeklyPlanEntry.topic),
+            joinedload(WeeklyPlanEntry.subtopics).joinedload(WeeklyPlanSubtopic.question)
+        )
+        .order_by(WeeklyPlanEntry.week_number)
+        .all()
+    )
+
+    weekly = {}
+    for entry in entries:
+        week = entry.week_number
+        if week not in weekly:
+            weekly[week] = []
+
+        subtopic_details = [
+            {
+                "id": s.question.id,
+                "title": s.question.title,
+                "tier": s.question.tier,
+                "weight": s.question.weight
+            }
+            for s in entry.subtopics
+        ]
+
+        weekly[week].append({
+            "topic_id": entry.topic.id,
+            "topic_name": entry.topic.name,
+            "category": entry.topic.category,
+            "focus_area": entry.focus_area,
+            "subtopics": subtopic_details
+        })
+
+    return jsonify({
+        "plan": {
+            "exam_date": plan.exam_date.strftime("%Y-%m-%d"),
+            "target_grade": plan.target_grade,
+            "generated_at": plan.generated_at.strftime("%Y-%m-%d %H:%M")
+        },
+        "weekly_plan": weekly
+    })
+
+@app.route("/api/plan/view", methods=["GET"])
+@token_required
+def view_current_plan(current_user):
+    return view_plan_for_user(current_user)
+
+@app.route("/api/admin/plan/view/<int:user_id>", methods=["GET"])
+@admin_required
+def admin_view_plan(current_user, user_id):
+    user = User.query.get_or_404(user_id)
+    return view_plan_for_user(user)
+
+@app.route("/api/admin/users/<int:user_id>", methods=["GET"])
+@admin_required
+def get_user_info(current_user, user_id):
+    user = User.query.get_or_404(user_id)
+
+    return jsonify({
+        "id": user.id,
+        "name": user.name,
+        "surname": user.surname,
+        "email": user.email,
+        "target_grade": user.target_grade,
+        "maths_paper": user.maths_paper,
+        "exam_date": user.exam_date.strftime("%Y-%m-%d") if user.exam_date else None
+    })    
+
+@app.route("/api/admin/plan/delete/<int:user_id>", methods=["DELETE"])
+@admin_required
+def delete_user_plan(current_user, user_id):
+    logging.info(f"🗑️ Admin requested deletion of plan for user {user_id}")
+    user = User.query.get_or_404(user_id)
+    
+    existing_plans = WeeklyPlan.query.filter_by(user_id=user.id).all()
+    if not existing_plans:
+        logging.info(f"🤷 No plan found for user {user_id} to delete")
+        return jsonify({"message": "No plan found for this user"}), 404
+
+    plan_ids = [plan.id for plan in existing_plans]
+    logging.info(f"🧹 Deleting plans with IDs: {plan_ids}")
+
+    # Find all entry IDs associated with these plans
+    entry_ids = [entry.id for entry in WeeklyPlanEntry.query.filter(WeeklyPlanEntry.plan_id.in_(plan_ids)).all()]
+    logging.info(f"🧹 Found associated entry IDs: {entry_ids}")
+
+    if entry_ids:
+        # 1. Delete subtopics linked to these entries
+        num_subtopics = WeeklyPlanSubtopic.query.filter(WeeklyPlanSubtopic.entry_id.in_(entry_ids)).delete(synchronize_session=False)
+        logging.info(f"🧹 Deleted {num_subtopics} subtopics")
+
+    # 2. Delete entries linked to these plans
+    num_entries = WeeklyPlanEntry.query.filter(WeeklyPlanEntry.plan_id.in_(plan_ids)).delete(synchronize_session=False)
+    logging.info(f"🧹 Deleted {num_entries} entries")
+
+    # 3. Delete the plans themselves
+    num_plans = WeeklyPlan.query.filter(WeeklyPlan.id.in_(plan_ids)).delete(synchronize_session=False)
+    logging.info(f"🧹 Deleted {num_plans} plans")
+
+    db.session.commit()
+    logging.info(f"✅ Plan deletion complete for user {user_id}")
+    return jsonify({"message": "Weekly plan deleted successfully"})
+
 def start_payment_checker():
     def check_loop():
         while True:
@@ -848,3 +1576,15 @@ def start_payment_checker():
 with app.app_context():
     print("🚀 Starting background payment checker...")
     start_payment_checker()
+
+# Temporary Debug Route - List all questions
+@app.route("/debug/list-all-questions")
+# @admin_required # Temporarily removed for easy access
+def debug_list_questions(): # Removed current_user argument
+    questions = TopicQuestion.query.options(joinedload(TopicQuestion.topic)).order_by(TopicQuestion.topic_id, TopicQuestion.id).all()
+    output = []
+    for q in questions:
+        output.append(
+            f"QID: {q.id: <3} | Tier: {q.tier: <10} | Weight: {q.weight: <4} | Topic: {q.topic.id: <2} ({q.topic.name}) | Title: {q.title}"
+        )
+    return "<pre>" + "\n".join(output) + "</pre>"

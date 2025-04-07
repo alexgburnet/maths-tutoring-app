@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import UserService from '../../../services/UserService';
+import UserModal from '../UserModal';
 
 export default function AdminUsersTab() {
     const [users, setUsers] = useState([]);
+    const [selectedUser, setSelectedUser] = useState(null);
 
     useEffect(() => {
         UserService.getAllUsers().then(setUsers);
@@ -22,7 +24,7 @@ export default function AdminUsersTab() {
                     </thead>
                     <tbody>
                         {users.map(user => (
-                            <tr key={user.id}>
+                            <tr key={user.id} onClick={() => setSelectedUser(user)} style={{ cursor: 'pointer' }}>
                                 <td>{user.name} {user.surname}</td>
                                 <td>{user.email}</td>
                                 <td>{user.is_admin ? 'Admin' : 'User'}</td>
@@ -31,6 +33,7 @@ export default function AdminUsersTab() {
                     </tbody>
                 </table>
             </div>
+            {selectedUser && <UserModal user={selectedUser} onClose={() => setSelectedUser(null)} />}
         </div>
     );
 }

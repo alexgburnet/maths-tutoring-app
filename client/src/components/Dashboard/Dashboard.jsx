@@ -10,7 +10,7 @@ export default function Dashboard() {
     });
 
     return (
-        <div className="page-container">
+        <div className="page-container dashboard-container">
             <div className="page-header">
                 <h1 className="page-title">Dashboard</h1>
                 <hr className="page-separator" />
