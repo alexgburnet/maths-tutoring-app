@@ -20,6 +20,15 @@ const PlanService = {
     return response.data;
   },
 
+  /**
+   * Marks a specific weekly plan entry as complete for the user.
+   * @param {number} entryId - The ID of the WeeklyPlanEntry to mark complete.
+   */
+  markEntryComplete: async (entryId) => {
+    const response = await axios.post(`/plan/entry/${entryId}/complete`);
+    return response.data; 
+  },
+
   // ──────────── ADMIN ────────────
 
   /**

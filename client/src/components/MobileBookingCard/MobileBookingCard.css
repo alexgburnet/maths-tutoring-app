@@ -87,3 +87,46 @@
 .cancel-button:hover {
     background-color: #c62828;
 }
+
+/* Styles for Completion Section */
+.completion-row {
+    align-items: center; /* Vertically align items in the row */
+    /* border-top: 1px solid #eee; */ /* REMOVED - Not needed as Cancel won't be present */
+    /* margin-top: 1rem; */ /* REMOVED - Not needed */
+    padding-top: 0.75rem; /* Add some padding above instead */
+}
+
+.completion-label-section p.mobile-label {
+    font-size: 0.9rem; /* Slightly larger label */
+    font-weight: normal; /* Normal weight for question */
+    color: #333; /* Darker text */
+}
+
+.completion-button-section {
+    display: flex;
+    justify-content: flex-end; /* Align button to the right */
+}
+
+.mark-complete-button {
+    padding: 0.6rem 1rem; /* Adjust padding */
+    background-color: var(--color-primary, #1976d2);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s ease, opacity 0.2s ease;
+    font-size: 0.9rem;
+}
+
+.mark-complete-button:hover:not(:disabled) {
+    background-color: var(--color-primary-dark, #1565c0);
+    opacity: 0.9;
+}
+
+.mark-complete-button:disabled {
+    background-color: #ccc; /* Grey background when disabled */
+    color: #666; /* Darker text color */
+    cursor: not-allowed;
+    opacity: 0.7;
+}

@@ -1,6 +1,27 @@
 import './MobileBookingCard.css';
+import PlanService from '../../services/PlanService';
+import { useState, useEffect } from 'react';
 
 export default function MobileBookingCard({ booking, isUpcoming, cancelBooking }) {
+    const [isMarkingComplete, setIsMarkingComplete] = useState(false);
+    const [localCompletedStatus, setLocalCompletedStatus] = useState(booking.entry_completed || false);
+
+    useEffect(() => {
+        setLocalCompletedStatus(booking.entry_completed || false);
+    }, [booking.entry_completed]);
+
+    const handleMarkComplete = async (entryId) => {
+        if (!entryId) return;
+        setIsMarkingComplete(true);
+        try {
+            await PlanService.markEntryComplete(entryId);
+            setLocalCompletedStatus(true);
+        } catch (error) {
+            console.error("Failed to mark entry complete:", error);
+            setIsMarkingComplete(false);
+        }
+    };
+
     const sections = [
         {
             label: 'topic',
@@ -38,11 +59,12 @@ export default function MobileBookingCard({ booking, isUpcoming, cancelBooking }
         },
     ];
 
-    // Group sections into rows of 2
     const groupedSections = [];
     for (let i = 0; i < sections.length; i += 2) {
         groupedSections.push(sections.slice(i, i + 2));
     }
+
+    const showCompletionSection = !isUpcoming && booking.entry_id;
 
     return (
         <div className="mobile-booking-card" key={booking.id}>
@@ -56,6 +78,23 @@ export default function MobileBookingCard({ booking, isUpcoming, cancelBooking }
                     ))}
                 </div>
             ))}
+
+            {showCompletionSection && (
+                <div className="mobile-row completion-row">
+                    <div className="mobile-section completion-label-section">
+                         <p className="mobile-label">Happy with this topic?</p>
+                    </div>
+                     <div className="mobile-section completion-button-section">
+                        <button 
+                            className="mark-complete-button" 
+                            onClick={() => handleMarkComplete(booking.entry_id)}
+                            disabled={isMarkingComplete || localCompletedStatus}
+                        >
+                            {localCompletedStatus ? 'Completed' : (isMarkingComplete ? 'Marking...' : 'Mark Complete')}
+                        </button>
+                     </div>
+                </div>
+            )}
 
             {isUpcoming && (
                 <div className="mobile-row full-width">

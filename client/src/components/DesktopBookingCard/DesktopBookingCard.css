@@ -84,3 +84,36 @@
     margin: 0;
     height: 40px;
 }
+
+/* Styles for Completion Section */
+.completion p {
+    font-weight: normal; /* Normal weight for question */
+    color: #333;
+}
+
+/* Reuse styles from mobile or define specifically */
+.mark-complete-button {
+    padding: 0.6rem 1rem;
+    background-color: var(--color-primary, #1976d2);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s ease, opacity 0.2s ease;
+    font-size: 0.9rem;
+    height: 40px; /* Match cancel button height */
+    margin: 0; /* Reset margin if needed */
+}
+
+.mark-complete-button:hover:not(:disabled) {
+    background-color: var(--color-primary-dark, #1565c0);
+    opacity: 0.9;
+}
+
+.mark-complete-button:disabled {
+    background-color: #ccc;
+    color: #666;
+    cursor: not-allowed;
+    opacity: 0.7;
+}

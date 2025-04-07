@@ -21,30 +21,29 @@ export default function BookingForm({ slot, onClose, onBooked }) {
         const options = [];
         if (planData && planData.weekly_plan) {
           const weekEntries = Object.entries(planData.weekly_plan)
-            // Sort weeks numerically
             .sort(([weekA], [weekB]) => parseInt(weekA) - parseInt(weekB));
 
           weekEntries.forEach(([weekNum, entries]) => {
             if (entries && entries.length > 0) {
-              // Find the first entry for the week (assuming sorted or just taking the first)
-              const firstEntry = entries[0]; 
-              // Optionally, filter out completed weeks/entries here if needed
-              // if (firstEntry.completed) return;
+              // Find the first *incomplete* entry for the week
+              const firstIncompleteEntry = entries.find(entry => !entry.completed);
               
-              // Construct display name (e.g., "Week 1: Algebra")
-              const displayName = `Week ${weekNum}: ${firstEntry.topic_name}`;
-              // Construct value identifier
-              const value = `week_${weekNum}`;
-              
-              options.push({
-                value: value, 
-                display: displayName,
-                // Store the display name to easily retrieve it later for custom_topic
-                _rawDisplayName: displayName 
-              });
+              // Only add the week to options if there is at least one incomplete entry
+              if (firstIncompleteEntry) {
+                  const displayName = `Week ${weekNum}: ${firstIncompleteEntry.topic_name}`;
+                  const value = `week_${weekNum}`;
+                  
+                  options.push({
+                    value: value, 
+                    display: displayName,
+                    _rawDisplayName: displayName 
+                  });
+              } else {
+                 console.log(`Week ${weekNum} skipped (all entries completed).`);
+              }
             }
           });
-          console.log("Processed Weekly Options for Dropdown:", options);
+          console.log("Processed (Incomplete) Weekly Options for Dropdown:", options);
           setWeeklyOptions(options);
         } else {
           console.log("No weekly plan found or plan format incorrect.");
