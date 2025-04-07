@@ -1401,9 +1401,12 @@ def generate_plan_for_user(user):
                 db.session.flush()  # Get entry.id
                 logging.info(f"    -> Created WeeklyPlanEntry (ID: {entry.id}) for Topic {topic_id} in Week {week_num}")
 
-                # Create WeeklyPlanSubtopic entries
+                # Create WeeklyPlanSubtopic entries - ENSURE UNIQUENESS
                 added_subtopic_count = 0
-                for sub_id in valid_subtopic_ids:
+                # Convert to set to remove duplicates before creating DB entries
+                unique_valid_subtopic_ids = set(valid_subtopic_ids)
+                
+                for sub_id in unique_valid_subtopic_ids:
                     subtopic_entry = WeeklyPlanSubtopic(
                         entry_id=entry.id,
                         question_id=sub_id
@@ -1412,7 +1415,7 @@ def generate_plan_for_user(user):
                     added_subtopic_count += 1
                 
                 if added_subtopic_count > 0:
-                    logging.info(f"      -> Added {added_subtopic_count} WeeklyPlanSubtopic records for Entry {entry.id}")
+                    logging.info(f"      -> Added {added_subtopic_count} UNIQUE WeeklyPlanSubtopic records for Entry {entry.id} (IDs: {unique_valid_subtopic_ids})")
                 
         except ValueError:
             logging.warning(f"⚠️ Skipping invalid week number '{week_str}' in OpenAI response for user {user.id}.")

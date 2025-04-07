@@ -14,6 +14,7 @@ export default function TakeQuiz() {
   const [topicIndex, setTopicIndex] = useState(0);
   const [questionIndex, setQuestionIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
   const [sliderValue, setSliderValue] = useState(3);
   const [showSplash, setShowSplash] = useState(true);
   const [showThankYou, setShowThankYou] = useState(false);
@@ -26,15 +27,17 @@ export default function TakeQuiz() {
         const rubricMap = {};
         const initialAnswers = {};
 
-        for (const topic of allTopics) {
+        await Promise.all(allTopics.map(async (topic) => {
           const questions = await QuizService.getQuizQuestions(topic.id, { useUserPaper: true });
-          for (const q of questions) {
+          await Promise.all(questions.map(async (q) => {
             const r = await QuizService.getQuizRubrics(q.id);
             rubricMap[q.id] = Object.fromEntries(r.map(d => [d.score, d.description]));
             initialAnswers[q.id] = 3;
-          }
+          }));
           topicList.push({ ...topic, questions });
-        }
+        }));
+
+        topicList.sort((a, b) => a.id - b.id);
 
         setTopics(topicList);
         setRubrics(rubricMap);
@@ -72,15 +75,26 @@ export default function TakeQuiz() {
       setTopicIndex(prev => prev + 1);
       setQuestionIndex(0);
     }
+    const nextQId = topics[topicIndex]?.questions[questionIndex + 1]?.id || topics[topicIndex + 1]?.questions[0]?.id;
+    if (nextQId) {
+        setSliderValue(answers[nextQId] ?? 3);
+    }
   };
 
   const back = () => {
+    let prevQId;
     if (questionIndex > 0) {
       setQuestionIndex(prev => prev - 1);
+      prevQId = currentTopic.questions[questionIndex - 1].id;
     } else if (topicIndex > 0) {
       const prevTopic = topics[topicIndex - 1];
       setTopicIndex(prev => prev - 1);
-      setQuestionIndex(prevTopic.questions.length - 1);
+      const lastQuestionIndex = prevTopic.questions.length - 1;
+      setQuestionIndex(lastQuestionIndex);
+      prevQId = prevTopic.questions[lastQuestionIndex].id;
+    }
+    if (prevQId) {
+        setSliderValue(answers[prevQId] ?? 3);
     }
   };
 
@@ -95,19 +109,25 @@ export default function TakeQuiz() {
       await QuizService.submitAssessment(payload);
       console.log("Assessment submitted successfully.");
 
+      setIsGeneratingPlan(true);
+
       try {
         console.log("Generating weekly plan...");
         await PlanService.generatePlan();
         console.log("Plan generation triggered successfully.");
+        setShowThankYou(true);
       } catch (planError) {
         console.error("❌ Failed to trigger plan generation:", planError);
+        alert("Your assessment was saved, but we couldn't generate your plan right now. Please check your dashboard later or contact support.");
+        setShowThankYou(false);
+      } finally {
+         setIsGeneratingPlan(false);
       }
-
-      setShowThankYou(true);
 
     } catch (submitError) {
       console.error("❌ Failed to submit quiz assessment:", submitError);
       alert("Failed to submit quiz results. Please try again.");
+      setIsGeneratingPlan(false);
     }
   };
 
@@ -130,9 +150,9 @@ export default function TakeQuiz() {
     return (
       <div className="thank-you-screen">
         <div className="thank-you-content">
-          <h1>Thanks for completing the quiz!</h1>
-          <p>Your responses have been saved. We're now generating a detailed plan, tailored to your goals and time left before your exam.</p>
-          <p>You'll see your plan on your dashboard shortly.</p>
+          <h1>Thank You!</h1>
+          <p>Your assessment is complete. We've generated a personalised study plan based on your answers.</p>
+          <p>You can view your weekly plan now on your Dashboard.</p>
         </div>
       </div>
     );
@@ -157,83 +177,101 @@ export default function TakeQuiz() {
         ></div>
       </div>
 
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={`${topicIndex}-${questionIndex}`}
-          className="quiz-content"
-          layout
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.4 }}
-        >
-          <h2 className="quiz-topic">{currentTopic.name}</h2>
-          <h3 className="quiz-title">{currentQuestion.title}</h3>
+      <div className="quiz-main-area">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={`${topicIndex}-${questionIndex}`}
+            className="quiz-content"
+            layout
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.4 }}
+          >
+            <h2 className="quiz-topic">{currentTopic.name}</h2>
+            <h3 className="quiz-title">{currentQuestion.title}</h3>
 
-          <input
-            type="range"
-            min={1}
-            max={5}
-            value={currentAnswer ?? 3}
-            onChange={handleSliderChange}
-            className="quiz-slider"
-          />
-          <div className="quiz-slider-labels">
-            {[1, 2, 3, 4, 5].map(score => (
-              <span key={score}>{score}</span>
-            ))}
-          </div>
+            <input
+              type="range"
+              min={1}
+              max={5}
+              value={currentAnswer ?? 3}
+              onChange={handleSliderChange}
+              className="quiz-slider"
+            />
+            <div className="quiz-slider-labels">
+              {[1, 2, 3, 4, 5].map(score => (
+                <span key={score}>{score}</span>
+              ))}
+            </div>
 
-          <AnimatePresence mode="wait">
-            {currentAnswer !== undefined && (
-              <motion.div
-                key={currentAnswer}
-                className="rubric-description"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.3 }}
-                layout
-              >
-                {renderWithMath(rubrics[currentQuestion.id]?.[currentAnswer] || 'No description yet')}
-              </motion.div>
-            )}
-          </AnimatePresence>
+            <AnimatePresence mode="wait">
+              {currentAnswer !== undefined && (
+                <motion.div
+                  key={currentAnswer}
+                  className="rubric-description"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3 }}
+                  layout
+                >
+                  {renderWithMath(rubrics[currentQuestion.id]?.[currentAnswer] || 'No description yet')}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-          <div className="quiz-nav">
-            <button onClick={back} disabled={topicIndex === 0 && questionIndex === 0}>
-              Back
-            </button>
-            {(topicIndex === topics.length - 1 && questionIndex === currentTopic.questions.length - 1) ? (
-              <button
-                className="submit-button"
-                onClick={handleSubmit}
-                disabled={Object.keys(answers).length !== total}
-              >
-                Submit
+            <div className="quiz-nav">
+              <button onClick={back} disabled={(topicIndex === 0 && questionIndex === 0) || isGeneratingPlan}>
+                Back
               </button>
-            ) : (
-              <button onClick={next} disabled={currentAnswer === undefined}>
-                Next
-              </button>
-            )}
+              {(topicIndex === topics.length - 1 && questionIndex === currentTopic.questions.length - 1) ? (
+                <button
+                  className="submit-button"
+                  onClick={handleSubmit}
+                  disabled={Object.values(answers).some(a => a === undefined || a === null) || isGeneratingPlan}
+                >
+                  Submit
+                </button>
+              ) : (
+                <button onClick={next} disabled={currentAnswer === undefined || isGeneratingPlan}>
+                  Next
+                </button>
+              )}
+            </div>
+          </motion.div>
+        </AnimatePresence>
+
+        {isGeneratingPlan && (
+          <div className="loading-overlay">
+              <div className="loading-content">
+                  <div className="spinner"></div>
+                  <p>Generating your personalised plan...</p>
+              </div>
           </div>
-        </motion.div>
-      </AnimatePresence>
+        )}
+      </div>
     </div>
   );
 }
 
 function renderWithMath(text) {
-  const parts = text.split(/(\$[^$]*\$)/g);
-  return parts.map((part, index) => {
-    if (part.startsWith('$') && part.endsWith('$')) {
-      return (
-        <div key={index} className="latex-block">
-          <BlockMath math={part.slice(1, -1)} />
-        </div>
-      );
+  if (!text) return null;
+  const parts = text.split(/(\$\$[\s\S]*?\$\$)|(\$[^$]*\$)|(\\\[[\s\S]*?\\\])|(\\\([^)]*\\\))/g);
+
+  return parts.filter(Boolean).map((part, index) => {
+    if (part.startsWith('$$') && part.endsWith('$$')) {
+      return <BlockMath key={index} math={part.slice(2, -2)} />;
     }
-    return part.trim() ? <p key={index}>{part}</p> : null;
-  });
+    if (part.startsWith('$') && part.endsWith('$')) {
+      return <InlineMath key={index} math={part.slice(1, -1)} />;
+    }
+     if (part.startsWith('\\[') && part.endsWith('\\]')) {
+       return <BlockMath key={index} math={part.slice(2, -2)} />;
+     }
+     if (part.startsWith('\\(') && part.endsWith('\\)')) {
+       return <InlineMath key={index} math={part.slice(2, -2)} />;
+     }
+    return part.split('\\n').map((line, lineIndex) => line.trim() ? <p key={`${index}-${lineIndex}`}>{line}</p> : null);
+  }).flat().filter(Boolean);
 }
