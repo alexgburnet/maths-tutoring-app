@@ -6,14 +6,14 @@ export default function DesktopBookingCard({ booking, isUpcoming, cancelBooking 
 
             <div className="topic card-section">
                 <p>topic</p>
-                <h3 className="booking-header">{booking.topic}</h3>
+                <h3 className="booking-header">{booking.topic_display || 'General'}</h3>
             </div>
 
             <div className="vertical-line"></div>
 
             <div className="date card-section">
                 <p>date</p>
-                <h3>{new Date(booking.scheduled_time).toLocaleString()}</h3>
+                <h3>{new Date(booking.scheduled_time).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}</h3>
             </div>
 
             <div className="vertical-line"></div>
@@ -43,7 +43,7 @@ export default function DesktopBookingCard({ booking, isUpcoming, cancelBooking 
                     <div className="vertical-line"></div>
                     <div className="cancel card-section">
                         <button className="cancel-button" onClick={() => cancelBooking(booking.id)}>
-                            <p>Cancel</p>
+                            Cancel
                         </button>
                     </div>
                 </>

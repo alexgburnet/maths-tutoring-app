@@ -4,11 +4,11 @@ export default function MobileBookingCard({ booking, isUpcoming, cancelBooking }
     const sections = [
         {
             label: 'topic',
-            content: <h3 className="booking-header">{booking.topic}</h3>,
+            content: <h3 className="booking-header">{booking.topic_display || 'General'}</h3>,
         },
         {
             label: 'date',
-            content: <h3>{new Date(booking.scheduled_time).toLocaleString()}</h3>,
+            content: <h3>{new Date(booking.scheduled_time).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}</h3>,
         },
         {
             label: 'payment ref:',

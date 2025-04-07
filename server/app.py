@@ -100,7 +100,7 @@ class User(db.Model):
 class Booking(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     student_name = db.Column(db.String(100), nullable=False)
-    topic = db.Column(db.String(200), nullable=False)
+    custom_topic = db.Column(db.String(200), nullable=True)
     scheduled_time = db.Column(db.DateTime, nullable=False)
 
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
@@ -108,6 +108,9 @@ class Booking(db.Model):
 
     slot_id = db.Column(db.Integer, db.ForeignKey("available_slot.id"))
     slot = db.relationship("AvailableSlot", backref="booking")
+
+    weekly_plan_subtopic_id = db.Column(db.Integer, db.ForeignKey("weekly_plan_subtopic.id"), nullable=True)
+    weekly_plan_subtopic = db.relationship("WeeklyPlanSubtopic", backref="bookings")
 
     payment_ref = db.Column(db.String(64), unique=True)
     is_paid = db.Column(db.Boolean, default=False)
@@ -119,10 +122,31 @@ class Booking(db.Model):
     followup_filename = db.Column(db.String(255), nullable=True)
 
     def to_dict(self):
+        topic_display = self.custom_topic
+        topic_id = None
+        subtopic_id = None
+        subtopic_title = None
+
+        if self.weekly_plan_subtopic:
+            try:
+                topic_display = self.weekly_plan_subtopic.entry.topic.name
+                topic_id = self.weekly_plan_subtopic.entry.topic.id
+                subtopic_id = self.weekly_plan_subtopic.question.id
+                subtopic_title = self.weekly_plan_subtopic.question.title
+            except AttributeError:
+                topic_display = "Topic from Plan (Details Unavailable)"
+                logging.warning(f"Could not fully resolve topic details for booking {self.id} from weekly_plan_subtopic {self.weekly_plan_subtopic_id}")
+        elif not topic_display:
+            topic_display = "General Discussion"
+
         return {
             "id": self.id,
             "student_name": self.student_name,
-            "topic": self.topic,
+            "topic_display": topic_display,
+            "custom_topic": self.custom_topic,
+            "topic_id": topic_id,
+            "weekly_plan_subtopic_id": self.weekly_plan_subtopic_id,
+            "subtopic_title": subtopic_title,
             "scheduled_time": self.scheduled_time.isoformat(),
             "slot_id": self.slot_id,
             "user_name": self.user.name if self.user else None,
@@ -186,6 +210,7 @@ class WeeklyPlanEntry(db.Model):
     week_number = db.Column(db.Integer, nullable=False)
     topic_id = db.Column(db.Integer, db.ForeignKey("topic.id"), nullable=False)
     focus_area = db.Column(db.String(255))  # Optional note or subtopic
+    completed = db.Column(db.Boolean, default=False, nullable=False)
 
     plan = db.relationship("WeeklyPlan", backref="entries")
     topic = db.relationship("Topic")
@@ -478,22 +503,42 @@ def update_user_info(current_user, user_id):
 def create_booking(current_user):
     data = request.json
     try:
-        slot_id = data["slot_id"]
-        topic = data["topic"]
+        slot_id = data.get("slot_id")
+        weekly_plan_subtopic_id = data.get("weekly_plan_subtopic_id") # Optional: ID from plan
+        custom_topic = data.get("custom_topic") # Optional: User-defined topic string
+
+        if not slot_id:
+             return jsonify({"error": "Slot ID is required"}), 400
+             
+        # Validate input: Exactly one of subtopic ID or custom topic must be provided
+        if not (weekly_plan_subtopic_id or custom_topic):
+             return jsonify({"error": "Either a weekly plan subtopic ID or a custom topic must be provided"}), 400
+        if weekly_plan_subtopic_id and custom_topic:
+             return jsonify({"error": "Provide either a weekly plan subtopic ID or a custom topic, not both"}), 400
 
         slot = AvailableSlot.query.get(slot_id)
-
         if not slot or slot.booked:
             return jsonify({"error": "Slot is not available"}), 400
+            
+        # Validate weekly_plan_subtopic_id if provided
+        if weekly_plan_subtopic_id:
+            subtopic = WeeklyPlanSubtopic.query.get(weekly_plan_subtopic_id)
+            if not subtopic:
+                 return jsonify({"error": f"Weekly plan subtopic with ID {weekly_plan_subtopic_id} not found"}), 404
+            # Optional: Check if this subtopic belongs to the current user's plan?
+            # This requires joining through WeeklyPlanEntry -> WeeklyPlan -> User
+            # Example check (might need adjustment based on relationships):
+            # if subtopic.entry.plan.user_id != current_user.id:
+            #     return jsonify({"error": "Subtopic does not belong to your plan"}), 403
+            
 
         payment_ref = str(uuid.uuid4())[:8]
 
-        print("Current user:", current_user)
-        print("Name:", getattr(current_user, 'name', None))
-
         booking = Booking(
             student_name=current_user.name,
-            topic=topic,
+            # topic=topic, # REMOVED
+            custom_topic=custom_topic, # Set if provided
+            weekly_plan_subtopic_id=weekly_plan_subtopic_id, # Set if provided
             scheduled_time=slot.start_time,
             user_id=current_user.id,
             slot_id=slot.id,
@@ -503,23 +548,35 @@ def create_booking(current_user):
         slot.booked = True
 
         if slot.start_time > datetime.utcnow():
-            zoom_meeting = create_zoom_meeting(
-                student_name=current_user.name,
-                student_surname=current_user.surname,
-                student_email=current_user.email,
-                start_time_iso=slot.start_time.isoformat()
-            )
-            booking.zoom_link = zoom_meeting["join_url"]
-            booking.zoom_meeting_id = zoom_meeting["id"]
+             try:
+                 zoom_meeting = create_zoom_meeting(
+                     student_name=current_user.name,
+                     student_surname=current_user.surname,
+                     student_email=current_user.email,
+                     start_time_iso=slot.start_time.isoformat()
+                 )
+                 booking.zoom_link = zoom_meeting["join_url"]
+                 booking.zoom_meeting_id = zoom_meeting["id"]
+             except Exception as e:
+                  logging.error(f"Zoom creation failed during booking: {e}", exc_info=True)
+                  # Decide if booking should fail if Zoom fails? For now, just log.
 
         db.session.add(booking)
         db.session.commit()
 
+        # Ensure relationships are loaded before calling to_dict if needed
+        # db.session.refresh(booking) 
+        # db.session.expire(booking) # Or expire to reload relationships on access
+
         return jsonify(booking.to_dict()), 201
 
+    except KeyError as e:
+        return jsonify({"error": f"Missing required field: {e}"}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
-    
+        logging.error(f"Error creating booking: {e}", exc_info=True)
+        db.session.rollback() # Rollback on generic error
+        return jsonify({"error": "An internal error occurred while creating the booking."}), 500
+
 @app.route("/api/admin/slots", methods=["POST"])
 @admin_required
 def add_slot(current_user):
@@ -636,19 +693,38 @@ def assign_user_to_slot(current_user):
     data = request.json
     slot_id = data.get("slot_id")
     user_id = data.get("user_id")
-    topic = data.get("topic", "General")
+    weekly_plan_subtopic_id = data.get("weekly_plan_subtopic_id") # Optional
+    custom_topic = data.get("custom_topic") # Optional
+
+    if not slot_id or not user_id:
+        return jsonify({"error": "Slot ID and User ID are required"}), 400
+
+    # Validate topic input: Allow either subtopic_id, custom_topic, or neither (defaults to General)
+    if weekly_plan_subtopic_id and custom_topic:
+         return jsonify({"error": "Provide either weekly_plan_subtopic_id or custom_topic, not both"}), 400
 
     user = User.query.get_or_404(user_id)
     slot = AvailableSlot.query.get_or_404(slot_id)
 
     if slot.booked:
         return jsonify({"error": "Slot already booked"}), 400
+        
+    # Validate weekly_plan_subtopic_id if provided
+    if weekly_plan_subtopic_id:
+        subtopic = WeeklyPlanSubtopic.query.get(weekly_plan_subtopic_id)
+        if not subtopic:
+            return jsonify({"error": f"Weekly plan subtopic with ID {weekly_plan_subtopic_id} not found"}), 404
+        # Optional: Check if this subtopic belongs to the assigned user's plan?
+        # if subtopic.entry.plan.user_id != user.id:
+        #     return jsonify({"error": "Subtopic does not belong to the specified user's plan"}), 400
 
-    payment_ref = str(uuid4())[:8]
+    payment_ref = str(uuid.uuid4())[:8]
 
     booking = Booking(
         student_name=user.name,
-        topic=topic,
+        # topic=topic, # REMOVED
+        custom_topic=custom_topic,
+        weekly_plan_subtopic_id=weekly_plan_subtopic_id,
         scheduled_time=slot.start_time,
         user_id=user.id,
         slot_id=slot.id,
@@ -657,7 +733,6 @@ def assign_user_to_slot(current_user):
 
     slot.booked = True
 
-    # 🕒 Only create Zoom meeting if session is in the future
     if slot.start_time > datetime.utcnow():
         try:
             zoom_meeting = create_zoom_meeting(
@@ -669,7 +744,7 @@ def assign_user_to_slot(current_user):
             booking.zoom_link = zoom_meeting["join_url"]
             booking.zoom_meeting_id = zoom_meeting["id"]
         except Exception as e:
-            print(f"⚠️ Zoom creation failed: {e}")
+            logging.error(f"Zoom creation failed during admin assignment: {e}", exc_info=True)
 
     db.session.add(booking)
     db.session.commit()
@@ -1395,7 +1470,8 @@ def generate_plan_for_user(user):
                     plan_id=plan.id,
                     week_number=week_num,
                     topic_id=topic_id,
-                    focus_area=focus_area
+                    focus_area=focus_area,
+                    completed=False
                 )
                 db.session.add(entry)
                 db.session.flush()  # Get entry.id
@@ -1451,12 +1527,14 @@ def view_plan_for_user(user):
     if not plan:
         return jsonify({"message": "No plan found"}), 404
 
+    # Eager load necessary relationships
     entries = (
         WeeklyPlanEntry.query
         .filter_by(plan_id=plan.id)
         .options(
-            joinedload(WeeklyPlanEntry.topic),
-            joinedload(WeeklyPlanEntry.subtopics).joinedload(WeeklyPlanSubtopic.question)
+            joinedload(WeeklyPlanEntry.topic), # Load parent Topic
+            joinedload(WeeklyPlanEntry.subtopics)
+              .joinedload(WeeklyPlanSubtopic.question) # Load Question details via WeeklyPlanSubtopic
         )
         .order_by(WeeklyPlanEntry.week_number)
         .all()
@@ -1470,24 +1548,28 @@ def view_plan_for_user(user):
 
         subtopic_details = [
             {
-                "id": s.question.id,
+                "weekly_plan_subtopic_id": s.id, # <<< ADDED THIS ID
+                "question_id": s.question.id, # Renamed from "id" for clarity
                 "title": s.question.title,
                 "tier": s.question.tier,
                 "weight": s.question.weight
             }
-            for s in entry.subtopics
+            for s in entry.subtopics # s here is a WeeklyPlanSubtopic object
         ]
 
         weekly[week].append({
+            "entry_id": entry.id, # Maybe useful on frontend?
             "topic_id": entry.topic.id,
             "topic_name": entry.topic.name,
             "category": entry.topic.category,
             "focus_area": entry.focus_area,
-            "subtopics": subtopic_details
+            "completed": entry.completed, # Pass completed status
+            "subtopics": subtopic_details # Now includes the correct ID
         })
 
     return jsonify({
         "plan": {
+            "plan_id": plan.id,
             "exam_date": plan.exam_date.strftime("%Y-%m-%d"),
             "target_grade": plan.target_grade,
             "generated_at": plan.generated_at.strftime("%Y-%m-%d %H:%M")

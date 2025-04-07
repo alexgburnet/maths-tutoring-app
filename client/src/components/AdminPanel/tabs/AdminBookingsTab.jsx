@@ -88,7 +88,7 @@ export default function AdminBookingsTab() {
                                 <tr key={b.id}>
                                     <td>{b.id}</td>
                                     <td>{b.student_name}</td>
-                                    <td>{b.topic}</td>
+                                    <td>{b.topic_display || 'General'}</td>
                                     <td>{new Date(b.scheduled_time).toLocaleString()}</td>
                                     <td>{b.payment_ref ? b.payment_ref : "N/A"}</td>
                                     <td>{b.is_paid ? "✅" : "❌"}</td>
@@ -115,13 +115,13 @@ export default function AdminBookingsTab() {
                                                 Download
                                             </button>
                                         ) : (
-                                            <button onClick={() => handleRegenerateFollowup(b.id)}>↻</button>
+                                            b.notes_url && <button onClick={() => handleRegenerateFollowup(b.id)} title="Regenerate Follow-up">↻</button>
                                         )}
                                     </td>
                                     <td>
-                                        <button onClick={() => handleMarkPaid(b.id)}>💰</button>
-                                        <button onClick={() => handleCheckPayment(b.id)}>🔍</button>
-                                        <button onClick={() => handleDeleteBooking(b.id)} className="button-danger">❌</button>
+                                        {!b.is_paid && <button onClick={() => handleMarkPaid(b.id)} title="Mark as Paid">💰</button>}
+                                        {!b.is_paid && <button onClick={() => handleCheckPayment(b.id)} title="Check Monzo Payment">🔍</button>}
+                                        <button onClick={() => handleDeleteBooking(b.id)} className="button-danger" title="Delete Booking">❌</button>
                                     </td>
                                 </tr>
                             ))}

@@ -43,7 +43,7 @@ export default function Notes() {
                 className="note-card"
                 onClick={() => downloadFile(booking.notes_url)}
               >
-                <h3>Click for notes on <span>{booking.topic}</span></h3>
+                <h3>Click for notes on <span>{booking.topic_display || 'this topic'}</span></h3>
                 <p>{new Date(booking.scheduled_time).toLocaleDateString()}</p>
               </div>
             ))}

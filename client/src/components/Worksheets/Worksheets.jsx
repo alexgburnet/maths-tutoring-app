@@ -43,7 +43,7 @@ export default function Worksheets() {
                 className="worksheet-card"
                 onClick={() => downloadFile(booking.followup_url)}
               >
-                <h3>Click to download the AI-generated worksheet on <span>{booking.topic}</span></h3>
+                <h3>Click to download the AI-generated worksheet on <span>{booking.topic_display || 'this topic'}</span></h3>
                 <p>{new Date(booking.scheduled_time).toLocaleDateString()}</p>
               </div>
             ))}
