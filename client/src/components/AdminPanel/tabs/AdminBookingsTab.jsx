@@ -76,6 +76,7 @@ export default function AdminBookingsTab() {
                                 <th>Student</th>
                                 <th>Topic</th>
                                 <th>Time</th>
+                                <th>Payment ref</th>
                                 <th>Paid</th>
                                 <th>Notes</th>
                                 <th>Follow-up</th>
@@ -89,6 +90,7 @@ export default function AdminBookingsTab() {
                                     <td>{b.student_name}</td>
                                     <td>{b.topic}</td>
                                     <td>{new Date(b.scheduled_time).toLocaleString()}</td>
+                                    <td>{b.payment_ref ? b.payment_ref : "N/A"}</td>
                                     <td>{b.is_paid ? "✅" : "❌"}</td>
                                     <td>
                                         {b.notes_url ? (
