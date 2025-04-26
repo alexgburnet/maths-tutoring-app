@@ -64,16 +64,15 @@ def create_zoom_meeting(student_name, student_surname, student_email, start_time
         "Content-Type": "application/json"
     }
 
-    # Convert to UTC if needed
     start_dt = datetime.fromisoformat(start_time_iso)
-    start_utc = start_dt.astimezone(timezone.utc).isoformat()
+    start_time_str = start_dt.isoformat()
 
     payload = {
         "topic": f"Maths Tutorial - {student_name}",
         "type": 2,  # Scheduled meeting
-        "start_time": start_utc,
-        "duration": 60,
-        "timezone": "UTC",
+        "start_time": start_time_str,  # Local time with timezone info if available
+        "duration": 60,  # in minutes
+        "timezone": "Europe/London",  # <-- Critical fix
         "settings": {
             "join_before_host": False,
             "approval_type": 0,
